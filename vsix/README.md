@@ -1,27 +1,18 @@
-# Bitstream Studio VSIX (latest build)
+# Bitstream Studio VSIX (versioned build)
 
-Drop the **most recent** Bitstream Studio extension `.vsix` here for hackathon handoff.
+Drop the Bitstream Studio extension `.vsix` here for hackathon handoff.
 
-Replace the previous file when you package a new build — keep **one** canonical VSIX in this folder.
+Filename: **`bitstream-studio-<version>.vsix`** where `<version>` matches `extension/package.json` (e.g. `bitstream-studio-0.1.4.vsix`).
 
-## Build (from Bitstream-Studio)
-
-```bash
-cd extension
-npm run compile
-npm run package
-```
-
-Copy the generated VSIX into this folder:
+## Refresh
 
 ```bash
-cp extension/bitstream-studio-*.vsix vsix/
+cd extension && npm run compile && npm run package
+bash .cursor/skills/tesaiot-hackathon-hex-drop/scripts/copy-hackathon-vsix.sh
 ```
 
-(from the Bitstream-Studio repo root after clone)
+Or HEX + VSIX together: `copy-hackathon-handoff.sh`. Metadata: `BUILD.txt`.
 
 ## Install
 
-VS Code → Extensions → `…` → **Install from VSIX…** → select the file in this folder.
-
-Optionally add `BUILD.txt` with version, git commit, and build date when you refresh the VSIX.
+VS Code → Extensions → `…` → **Install from VSIX…** → select **`bitstream-studio-<version>.vsix`** in this folder.

@@ -8,8 +8,8 @@ Repository: [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TE
 
 | Path | Role |
 |------|------|
-| `vsix/` | Latest Bitstream Studio `.vsix` — install in VS Code |
-| `hex/` | Latest firmware `.hex` — flash to the PSoC Edge board |
+| `vsix/` | Bitstream Studio `.vsix` — `bitstream-studio-<version>.vsix` (matches `extension/package.json`) |
+| `hex/` | Firmware `.hex` — `tesaiot-bitstream-<version>.hex` (same version label) |
 | `web-app/` | Static HTML dashboards (serve this folder over HTTP) |
 | `web-app/index.html` | Example catalog |
 | `web-app/shared/` | `ex-demo.css`, `ex-demo.js` (ex02–ex08) |
@@ -44,8 +44,8 @@ Web pages read live samples from the Bitstream Telemetry Provider (`ws://127.0.0
 
 | Artifact | Source | Drop location |
 |----------|--------|---------------|
-| VSIX | `npm run compile && npm run package` in [Bitstream-Studio](https://github.com/drsanti/Bitstream-Studio) `extension/` | `vsix/` (replace previous file) |
-| HEX | TESAIoT firmware build output | `hex/` (replace previous file) |
+| VSIX | `npm run compile && npm run package` in Bitstream-Studio `extension/` | `vsix/bitstream-studio-<version>.vsix` |
+| HEX | TESAIoT firmware `app_combined.hex` | `hex/tesaiot-bitstream-<version>.hex` |
 
 See `vsix/README.md` and `hex/README.md` for naming notes.
 

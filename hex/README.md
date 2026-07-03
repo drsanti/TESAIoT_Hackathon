@@ -1,17 +1,13 @@
-# Firmware HEX (latest build)
+# Firmware HEX (versioned build)
 
-Drop the **most recent** TESAIoT / Bitstream firmware `.hex` here for hackathon handoff.
+Drop the TESAIoT / Bitstream firmware `.hex` here for hackathon handoff.
 
-Replace the previous file when you ship a new build — keep **one** canonical HEX in this folder.
+Filename: **`tesaiot-bitstream-<version>.hex`** where `<version>` matches `extension/package.json` in Bitstream-Studio (e.g. `tesaiot-bitstream-0.1.4.hex`).
 
-## Typical source
+## Refresh
 
-Build output from the TESAIoT firmware workspace (PSoC Edge), e.g. the application `.hex` from your ModusToolbox / IDE export.
+```bash
+bash .cursor/skills/tesaiot-hackathon-hex-drop/scripts/copy-hackathon-hex.sh
+```
 
-## Suggested name
-
-Use a stable name so docs and scripts can reference it, for example:
-
-- `tesaiot-bitstream-latest.hex`
-
-Optionally add a one-line `BUILD.txt` with git commit, date, and board profile when you refresh the HEX.
+Source: `TESAIoT_PSoC_Edge_Workspace/TESAIoT_Firmware/build/app_combined.hex`. Metadata: `BUILD.txt`.

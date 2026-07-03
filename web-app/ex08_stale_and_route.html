@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex08 — Stale Events &amp; Route / Origin</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+    @media (max-width: 640px) { .status-grid { grid-template-columns: 1fr; } }
+    .stat { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+    .stat .k { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .stat .v { font-size: 1.1rem; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
+    .sensor-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 0.8rem; border: 1px solid var(--border);
+      background: var(--card);
+    }
+    .pill.stale { opacity: 0.4; border-color: var(--warn); }
+    .pill.fresh { border-color: var(--ok); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>Stale Events &amp; Route / Origin</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <p class="label">
+    Demonstrates provider <code>connection</code> route, per-sample <code>origin</code>
+    (uart vs sim), and <code>stale</code> events when a sensor stops publishing.
+  </p>
+
+  <div class="status-grid">
+    <div class="stat">
+      <div class="k">Connection route</div>
+      <div class="v" id="connRoute">–</div>
+    </div>
+    <div class="stat">
+      <div class="k">COM open</div>
+      <div class="v" id="comOpen">–</div>
+    </div>
+    <div class="stat">
+      <div class="k">Last sample origin</div>
+      <div class="v" id="lastOrigin">–</div>
+    </div>
+  </div>
+
+  <div class="sensor-pills" id="pills"></div>
+
+  <div class="card">
+    <div class="label">Event log (newest first, max 80 lines)</div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script type="module">
+    import { loadSdk, connectTelemetry } from './shared/ex-demo.js';
+
+    const { TelemetryClient, SENSOR_CATALOG } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const logEl = $('log');
+    const pills = $('pills');
+    const pillMap = new Map();
+    const lines = [];
+    const MAX = 80;
+
+    for (const s of SENSOR_CATALOG.sensors) {
+      const pill = document.createElement('span');
+      pill.className = 'pill';
+      pill.id = `pill-${s.id}`;
+      pill.textContent = `${s.label} · stale ${s.staleAfterMs} ms`;
+      pills.appendChild(pill);
+      pillMap.set(s.id, pill);
+    }
+
+    function ts() {
+      return new Date().toLocaleTimeString('en-GB', { hour12: false });
+    }
+
+    function appendLog(cls, text) {
+      lines.unshift(`<span class="${cls}">[${ts()}] ${text}</span>`);
+      if (lines.length > MAX) lines.length = MAX;
+      logEl.innerHTML = lines.join('\n');
+    }
+
+    const client = new TelemetryClient();
+
+    client.on('connection', (c) => {
+      $('state').textContent = c.state;
+      $('state').className = c.state;
+      $('route').textContent = c.state === 'connected' ? `route: ${c.route}` : '';
+      $('connRoute').textContent = c.route;
+      $('comOpen').textContent = c.comOpen ? 'yes' : 'no';
+      appendLog('evt-route', `connection · state=${c.state} route=${c.route} comOpen=${c.comOpen}`);
+    });
+
+    client.on('sample', (s) => {
+      $('lastOrigin').textContent = s.origin ?? '?';
+      const pill = pillMap.get(s.sensor);
+      if (pill) {
+        pill.classList.remove('stale');
+        pill.classList.add('fresh');
+      }
+      const fields = Object.entries(s.fields)
+        .map(([k, v]) => `${k}=${typeof v === 'number' ? v.toFixed(2) : v}`)
+        .slice(0, 4)
+        .join(', ');
+      appendLog(
+        'evt-sample',
+        `sample · ${s.sensor} origin=${s.origin ?? '?'} #${s.counter} { ${fields}${Object.keys(s.fields).length > 4 ? ', …' : ''} }`,
+      );
+    });
+
+    client.on('stale', (info) => {
+      const pill = pillMap.get(info.sensor);
+      if (pill) {
+        pill.classList.remove('fresh');
+        pill.classList.add('stale');
+      }
+      appendLog(
+        'evt-stale',
+        `stale · sensor=${info.sensor} lastHostMs=${info.lastHostMs} threshold=${info.staleAfterMs} ms`,
+      );
+    });
+
+    client.on('hello', (h) => {
+      appendLog('evt-route', `hello · fw caps=0x${h.caps.toString(16)} mtuSensor=${h.mtuSensor}`);
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

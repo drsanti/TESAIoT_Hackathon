@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex05 — BMI270 Orientation / Artificial Horizon</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>BMI270 — Orientation</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="note">
+    <strong>Prerequisites:</strong> BMI270 fusion channels must be enabled in the sensor mask.
+    In Virt MCU / Bitstream sensor settings, include <strong>Euler</strong> (heading, pitch, roll)
+    or <strong>Quaternion</strong> in the BMI270 publish mask. Accel/gyro-only streams will not
+    drive this view.
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card" id="horizonCard">
+      <div class="label">Artificial horizon (pitch + roll)</div>
+      <canvas id="horizon" class="viz" width="360" height="260"></canvas>
+      <div class="meta" id="horizonMeta">waiting for orientation fields…</div>
+    </div>
+    <div class="card" id="eulerCard">
+      <div class="label">Euler angles</div>
+      <div class="axis-row">
+        <span class="label">Heading</span>
+        <span class="num" id="headingVal">–</span>
+        <span class="label" style="width:auto">°</span>
+      </div>
+      <div class="axis-row">
+        <span class="label">Pitch</span>
+        <span class="num" id="pitchVal">–</span>
+        <span class="label" style="width:auto">°</span>
+      </div>
+      <div class="axis-row">
+        <span class="label">Roll</span>
+        <span class="num" id="rollVal">–</span>
+        <span class="label" style="width:auto">°</span>
+      </div>
+      <div class="meta" id="sourceMeta"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      resolveOrientation, drawHorizon,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const imu = catalogEntry('bmi270');
+    const canvas = $('horizon');
+    const ctx = canvas.getContext('2d');
+
+    const stale = createStaleTracker(imu.staleAfterMs, (isStale) => {
+      $('horizonCard').classList.toggle('stale', isStale);
+      $('eulerCard').classList.toggle('stale', isStale);
+    });
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('bmi270', (s) => {
+      stale.touch();
+      const o = resolveOrientation(s.fields);
+      if (!o) return;
+
+      drawHorizon(ctx, canvas, o.pitchRad, o.rollRad);
+      $('headingVal').textContent = ((o.headingRad * 180) / Math.PI).toFixed(1);
+      $('pitchVal').textContent = ((o.pitchRad * 180) / Math.PI).toFixed(1);
+      $('rollVal').textContent = ((o.rollRad * 180) / Math.PI).toFixed(1);
+      $('horizonMeta').textContent = formatMeta(s);
+      $('sourceMeta').textContent = `source: ${o.source} · mask 0x${(s.mask ?? 0).toString(16)}`;
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'bmi270') {
+        $('horizonCard').classList.add('stale');
+        $('eulerCard').classList.add('stale');
+      }
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

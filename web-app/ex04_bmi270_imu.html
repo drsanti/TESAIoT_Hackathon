@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex04 — BMI270 IMU (Accel + Gyro)</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    .accel .bar > div { background: var(--accel); }
+    .gyro .bar > div { background: var(--gyro); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>BMI270 — Acceleration &amp; Gyroscope</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="grid grid-2">
+    <div class="card accel" id="accelCard">
+      <h2>Acceleration (m/s²)</h2>
+      <div id="accelRows"></div>
+      <canvas id="accelSpark" class="spark" width="360" height="48"></canvas>
+      <div class="meta" id="accelMeta"></div>
+    </div>
+    <div class="card gyro" id="gyroCard">
+      <h2>Gyroscope (rad/s)</h2>
+      <div id="gyroRows"></div>
+      <canvas id="gyroSpark" class="spark" width="360" height="48"></canvas>
+      <div class="meta" id="gyroMeta"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, pct, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      fieldDef, pushHistory, drawSparkline,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const imu = catalogEntry('bmi270');
+    const accelKeys = ['accelX', 'accelY', 'accelZ'];
+    const gyroKeys = ['gyroX', 'gyroY', 'gyroZ'];
+
+    function buildRows(containerId, keys) {
+      const root = $(containerId);
+      const bars = {};
+      const vals = {};
+      for (const key of keys) {
+        const def = fieldDef(imu, key);
+        const row = document.createElement('div');
+        row.className = 'axis-row';
+        row.innerHTML = `
+          <span class="label">${def.label.replace(/Acceleration |Gyro /, '')}</span>
+          <div class="bar"><div></div></div>
+          <span class="num">–</span>`;
+        root.appendChild(row);
+        bars[key] = row.querySelector('.bar > div');
+        vals[key] = row.querySelector('.num');
+      }
+      return { bars, vals, defs: keys.map((k) => fieldDef(imu, k)) };
+    }
+
+    const accel = buildRows('accelRows', accelKeys);
+    const gyro = buildRows('gyroRows', gyroKeys);
+    const accelHist = [];
+    const gyroHist = [];
+    const accelCtx = $('accelSpark').getContext('2d');
+    const gyroCtx = $('gyroSpark').getContext('2d');
+
+    const stale = createStaleTracker(imu.staleAfterMs, (isStale) => {
+      $('accelCard').classList.toggle('stale', isStale);
+      $('gyroCard').classList.toggle('stale', isStale);
+    });
+
+    function updateGroup(keys, bars, vals, defs, sample, hist, ctx, canvasId, metaId) {
+      const meta = formatMeta(sample);
+      $(metaId).textContent = meta;
+      let sum = 0;
+      let n = 0;
+      keys.forEach((key, i) => {
+        const v = sample.fields[key];
+        if (typeof v !== 'number') return;
+        vals[key].textContent = v.toFixed(2);
+        bars[key].style.width = pct(v, defs[i]) + '%';
+        sum += Math.abs(v);
+        n++;
+      });
+      if (n) {
+        const avg = sum / n;
+        pushHistory(hist, avg, 80);
+        const color = canvasId === 'accelSpark'
+          ? getComputedStyle(document.body).getPropertyValue('--accel')
+          : getComputedStyle(document.body).getPropertyValue('--gyro');
+        drawSparkline(ctx, $(canvasId), hist, color, 80);
+      }
+    }
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('bmi270', (s) => {
+      stale.touch();
+      updateGroup(accelKeys, accel.bars, accel.vals, accel.defs, s, accelHist, accelCtx, 'accelSpark', 'accelMeta');
+      updateGroup(gyroKeys, gyro.bars, gyro.vals, gyro.defs, s, gyroHist, gyroCtx, 'gyroSpark', 'gyroMeta');
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'bmi270') {
+        $('accelCard').classList.add('stale');
+        $('gyroCard').classList.add('stale');
+      }
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

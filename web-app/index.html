@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bitstream Studio — Web App Examples</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    body { max-width: 720px; }
+    .lead { color: var(--muted); font-size: 0.95rem; line-height: 1.5; margin: 0 0 1.25rem; }
+    .steps { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 1.25rem; }
+    .steps h2 { font-size: 0.95rem; margin: 0 0 10px; }
+    .steps ol { margin: 0; padding-left: 1.25rem; color: var(--text); font-size: 0.9rem; line-height: 1.6; }
+    .steps code { font-size: 0.82rem; background: #eef0f2; padding: 1px 5px; border-radius: 4px; }
+    .catalog { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+    .catalog li a {
+      display: block; background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; text-decoration: none; color: var(--text);
+    }
+    .catalog li a:hover { border-color: var(--accent); }
+    .catalog .id { font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; }
+    .catalog .title { font-weight: 600; font-size: 0.95rem; }
+    .catalog .desc { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+    .section-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 1.25rem 0 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bitstream Studio Web App Examples</h1>
+  </header>
+
+  <p class="lead">
+  Self-contained HTML pages that consume live sensor data from the Bitstream Telemetry Provider
+  (<code>ws://127.0.0.1:9997</code>) via the <code>@bitstream/live-data</code> SDK.
+  </p>
+
+  <div class="steps">
+    <h2>How to run</h2>
+    <ol>
+      <li>Install <strong>Bitstream Studio</strong> from the <code>vsix/</code> folder in this repo (VS Code → Extensions → Install from VSIX).</li>
+      <li>Start backend services (bridge + telemetry provider) — automatic on extension activate, or run Bitstream Studio dev bridge if you build from source.</li>
+      <li>Command Palette → <strong>Serve Web App Folder over HTTP</strong> → select this <code>web-app</code> folder (serves pages + <code>/sdk/live-data.js</code>).</li>
+      <li>Open the catalog URL from the notification (or browse to <code>index.html</code>).</li>
+      <li>Connect a device (toolbar <strong>Bitstream</strong> + COM) or external Simulator (toolbar <strong>Simulator</strong>) so samples flow to the provider.</li>
+    </ol>
+    <p style="margin: 10px 0 0; font-size: 0.85rem; color: var(--muted);">
+      Offline fallback: copy <code>live-data.browser.js</code> to <code>vendor/live-data.js</code> in this folder and use any static server (<code>npx serve .</code> from <code>web-app/</code>).
+    </p>
+  </div>
+
+  <p class="section-label">Per-sensor</p>
+  <ul class="catalog">
+    <li>
+      <a href="ex01_sht40.html">
+        <div class="id">ex01</div>
+        <div class="title">SHT40 — Temperature &amp; Humidity</div>
+        <div class="desc">Reference template: catalog labels, bars, dual-series chart, stale handling.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex02_dps368.html">
+        <div class="id">ex02</div>
+        <div class="title">DPS368 — Pressure &amp; Temperature</div>
+        <div class="desc">Barometric pressure bar + temperature + pressure history chart.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex03_bmm350.html">
+        <div class="id">ex03</div>
+        <div class="title">BMM350 — Magnetometer &amp; Compass</div>
+        <div class="desc">Mag X/Y/Z values + 2D compass needle from atan2(magY, magX).</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex04_bmi270_imu.html">
+        <div class="id">ex04</div>
+        <div class="title">BMI270 — IMU (Accel + Gyro)</div>
+        <div class="desc">Six-axis bars and sparklines for acceleration and gyroscope.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex05_bmi270_orientation.html">
+        <div class="id">ex05</div>
+        <div class="title">BMI270 — Orientation / Artificial Horizon</div>
+        <div class="desc">Euler or quaternion → pitch/roll horizon canvas visualization.</div>
+      </a>
+    </li>
+  </ul>
+
+  <p class="section-label">Composite &amp; API</p>
+  <ul class="catalog">
+    <li>
+      <a href="ex06_dashboard.html">
+        <div class="id">ex06</div>
+        <div class="title">Multi-sensor Dashboard</div>
+        <div class="desc">Compact cards for all four sensors with key fields.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex07_catalog_browser.html">
+        <div class="id">ex07</div>
+        <div class="title">Sensor Catalog Browser</div>
+        <div class="desc">Runtime table of SENSOR_CATALOG fields, masks, and stale thresholds.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex08_stale_and_route.html">
+        <div class="id">ex08</div>
+        <div class="title">Stale Events &amp; Route / Origin</div>
+        <div class="desc">Event log for connection route, per-sample origin, and provider stale events.</div>
+      </a>
+    </li>
+  </ul>
+</body>
+</html>

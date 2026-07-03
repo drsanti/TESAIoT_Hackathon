@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex01 — SHT40 Temperature &amp; Humidity</title>
+  <style>
+    :root {
+      --bg: #f6f7f9; --card: #fff; --border: #e3e5e8; --text: #1c1e21; --muted: #8a8f98;
+      --temp: #e0563a; --hum: #2a7ad3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text);
+      max-width: 820px; margin: 2rem auto; padding: 0 1rem;
+    }
+    header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    h1 { font-size: 1.3rem; margin: 0; }
+    #state { padding: 2px 12px; border-radius: 12px; color: #fff; background: #9aa0a6; font-size: 0.85rem; }
+    #state.connected { background: #2a9d3a; }
+    #route { color: var(--muted); font: 12px monospace; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .label { color: var(--muted); font-size: 0.85rem; }
+    .value { font-size: 3rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15; }
+    .value small { font-size: 1.2rem; font-weight: 500; color: var(--muted); }
+    .bar { height: 8px; border-radius: 4px; background: #eef0f2; overflow: hidden; margin-top: 8px; }
+    .bar > div { height: 100%; width: 0%; border-radius: 4px; transition: width 0.25s ease; }
+    #tempBar > div { background: var(--temp); }
+    #humBar > div { background: var(--hum); }
+    .meta { margin-top: 8px; font: 11px monospace; color: var(--muted); }
+    canvas { width: 100%; height: 200px; margin-top: 4px; }
+    .stale .value { opacity: 0.35; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SHT40 — Temperature &amp; Humidity</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="grid">
+    <div class="card" id="tempCard">
+      <div class="label" id="tempLabel">Temperature</div>
+      <div class="value"><span id="tempVal">–</span> <small id="tempUnit">°C</small></div>
+      <div class="bar" id="tempBar"><div></div></div>
+      <div class="meta" id="tempMeta"></div>
+    </div>
+    <div class="card" id="humCard">
+      <div class="label" id="humLabel">Humidity</div>
+      <div class="value"><span id="humVal">–</span> <small id="humUnit">%RH</small></div>
+      <div class="bar" id="humBar"><div></div></div>
+      <div class="meta" id="humMeta"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 12px;">
+    <div class="label">History (last 120 samples)</div>
+    <canvas id="chart" width="760" height="200"></canvas>
+  </div>
+
+  <script type="module">
+    // SDK loading, in preference order:
+    // 1. /sdk/live-data.js — the VSIX-shipped bundle, available when this page is
+    //    served by the extension ("Serve Web App Folder over HTTP").
+    // 2. ./vendor/live-data.js — local copy fallback (npx serve, python http.server, ...).
+    const { TelemetryClient, catalogEntry } = await import('/sdk/live-data.js')
+      .catch(() => import('./vendor/live-data.js'));
+
+    const $ = (id) => document.getElementById(id);
+    const stateEl = $('state'), routeEl = $('route');
+    const canvas = $('chart'), ctx = canvas.getContext('2d');
+
+    // Catalog-driven labels, units and ranges (SHT40: temperatureC, humidityPct)
+    const sht40 = catalogEntry('sht40');
+    const tempDef = sht40.fields.find((f) => f.key === 'temperatureC');
+    const humDef = sht40.fields.find((f) => f.key === 'humidityPct');
+    $('tempLabel').textContent = tempDef.label;
+    $('tempUnit').textContent = tempDef.unit;
+    $('humLabel').textContent = humDef.label;
+    $('humUnit').textContent = humDef.unit;
+
+    const tempHist = [], humHist = [], MAX = 120;
+    let staleTimer = null;
+
+    function pct(v, def) {
+      return Math.max(0, Math.min(100, ((v - def.min) / (def.max - def.min)) * 100));
+    }
+
+    function drawSeries(series, color, min, max) {
+      if (series.length < 2) return;
+      const span = max - min || 1;
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      series.forEach((v, i) => {
+        const x = (i / (MAX - 1)) * canvas.width;
+        const y = canvas.height - 8 - ((v - min) / span) * (canvas.height - 16);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function drawChart() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // Auto-scale each series to its own recent range for readability
+      const scale = (s) => [Math.min(...s), Math.max(...s)];
+      if (tempHist.length > 1) drawSeries(tempHist, getComputedStyle(document.body).getPropertyValue('--temp'), ...scale(tempHist));
+      if (humHist.length > 1) drawSeries(humHist, getComputedStyle(document.body).getPropertyValue('--hum'), ...scale(humHist));
+    }
+
+    function markStale(isStale) {
+      $('tempCard').classList.toggle('stale', isStale);
+      $('humCard').classList.toggle('stale', isStale);
+    }
+
+    const client = new TelemetryClient(); // ws://127.0.0.1:9997 (telemetry provider)
+
+    client.on('connection', (c) => {
+      stateEl.textContent = c.state;
+      stateEl.className = c.state;
+      routeEl.textContent = c.state === 'connected' ? `route: ${c.route}` : '';
+    });
+
+    client.onSensor('sht40', (s) => {
+      markStale(false);
+      clearTimeout(staleTimer);
+      staleTimer = setTimeout(() => markStale(true), sht40.staleAfterMs);
+
+      const meta = `#${s.counter} · ${s.origin ?? '?'} · device ${s.deviceMs} ms`;
+
+      if (typeof s.fields.temperatureC === 'number') {
+        $('tempVal').textContent = s.fields.temperatureC.toFixed(2);
+        $('tempBar').firstElementChild.style.width = pct(s.fields.temperatureC, tempDef) + '%';
+        $('tempMeta').textContent = meta;
+        tempHist.push(s.fields.temperatureC);
+        if (tempHist.length > MAX) tempHist.shift();
+      }
+      if (typeof s.fields.humidityPct === 'number') {
+        $('humVal').textContent = s.fields.humidityPct.toFixed(1);
+        $('humBar').firstElementChild.style.width = pct(s.fields.humidityPct, humDef) + '%';
+        $('humMeta').textContent = meta;
+        humHist.push(s.fields.humidityPct);
+        if (humHist.length > MAX) humHist.shift();
+      }
+      drawChart();
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'sht40') markStale(true);
+    });
+
+    try {
+      await client.connect();
+    } catch {
+      routeEl.textContent = 'provider not reachable — start Bitstream Studio services';
+    }
+  </script>
+</body>
+</html>

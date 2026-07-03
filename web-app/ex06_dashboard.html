@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex06 — Multi-sensor Dashboard</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    body.wide { max-width: 1100px; }
+    .dash-value { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .dash-row { display: flex; justify-content: space-between; font-size: 0.82rem; padding: 3px 0; border-bottom: 1px solid #f0f1f3; }
+    .dash-row:last-child { border-bottom: none; }
+    .dash-row .k { color: var(--muted); }
+    .dash-row .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+  </style>
+</head>
+<body class="wide">
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>Multi-sensor Dashboard</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="grid grid-4" id="cards"></div>
+
+  <script type="module">
+    import { loadSdk, formatMeta, wireConnectionBadge, connectTelemetry } from './shared/ex-demo.js';
+
+    const { TelemetryClient, SENSOR_CATALOG } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const cardsEl = $('cards');
+    const cells = new Map();
+    const metaEls = new Map();
+
+    /** Primary fields to show per sensor (compact dashboard). */
+    const PRIMARY = {
+      sht40: ['temperatureC', 'humidityPct'],
+      dps368: ['pressureHpa', 'temperatureC'],
+      bmm350: ['magX', 'magY', 'magZ', 'temperatureC'],
+      bmi270: ['accelX', 'accelY', 'accelZ', 'gyroZ'],
+    };
+
+    for (const sensor of SENSOR_CATALOG.sensors) {
+      const keys = PRIMARY[sensor.id] ?? sensor.fields.slice(0, 4).map((f) => f.key);
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.id = `card-${sensor.id}`;
+      card.innerHTML = `<h2>${sensor.label}</h2><div class="meta" id="meta-${sensor.id}">waiting…</div><div class="rows"></div>`;
+      const rows = card.querySelector('.rows');
+      for (const key of keys) {
+        const f = sensor.fields.find((x) => x.key === key);
+        if (!f) continue;
+        const row = document.createElement('div');
+        row.className = 'dash-row';
+        row.innerHTML = `<span class="k">${f.label}</span><span class="v">– <span class="u">${f.unit}</span></span>`;
+        rows.appendChild(row);
+        cells.set(`${sensor.id}.${key}`, row.querySelector('.v'));
+      }
+      cardsEl.appendChild(card);
+      metaEls.set(sensor.id, $(`meta-${sensor.id}`));
+    }
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.on('sample', (s) => {
+      document.getElementById(`card-${s.sensor}`)?.classList.remove('stale');
+      const meta = metaEls.get(s.sensor);
+      if (meta) meta.textContent = formatMeta(s);
+      for (const [key, value] of Object.entries(s.fields)) {
+        const cell = cells.get(`${s.sensor}.${key}`);
+        if (!cell || typeof value !== 'number') continue;
+        const u = cell.querySelector('.u');
+        const unit = u?.textContent ?? '';
+        const digits = key.startsWith('quat') ? 4 : key.includes('gyro') || key.startsWith('accel') ? 2 : 1;
+        cell.textContent = `${value.toFixed(digits)} `;
+        if (unit) {
+          const span = document.createElement('span');
+          span.className = 'u';
+          span.textContent = unit;
+          cell.appendChild(span);
+        }
+      }
+    });
+
+    client.on('stale', (info) => {
+      document.getElementById(`card-${info.sensor}`)?.classList.add('stale');
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

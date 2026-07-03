@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex03 — BMM350 Magnetometer &amp; Compass</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    .mag-x > div { background: #e0563a; }
+    .mag-y > div { background: #2a9d3a; }
+    .mag-z > div { background: var(--mag); }
+    #tempBar > div { background: var(--temp); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>BMM350 — Magnetometer &amp; Compass</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="grid grid-2">
+    <div class="card" id="magCard">
+      <div class="label">Magnetic field (µT)</div>
+      <div class="axis-row">
+        <span class="label" id="magXLabel">X</span>
+        <div class="bar mag-x"><div id="magXBar"></div></div>
+        <span class="num" id="magXVal">–</span>
+      </div>
+      <div class="axis-row">
+        <span class="label" id="magYLabel">Y</span>
+        <div class="bar mag-y"><div id="magYBar"></div></div>
+        <span class="num" id="magYVal">–</span>
+      </div>
+      <div class="axis-row">
+        <span class="label" id="magZLabel">Z</span>
+        <div class="bar mag-z"><div id="magZBar"></div></div>
+        <span class="num" id="magZVal">–</span>
+      </div>
+      <div class="meta" id="magMeta"></div>
+    </div>
+    <div class="card" id="compassCard">
+      <div class="label">Heading (atan2 magY, magX)</div>
+      <canvas id="compass" class="viz" width="320" height="220"></canvas>
+      <div class="value sm" style="margin-top: 8px;">
+        <span id="headingDeg">–</span> <small>°</small>
+      </div>
+      <div class="meta" id="compassMeta"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 12px;" id="tempCard">
+    <div class="label" id="tempLabel">Temperature</div>
+    <div class="value"><span id="tempVal">–</span> <small id="tempUnit">°C</small></div>
+    <div class="bar" id="tempBar"><div></div></div>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, pct, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      fieldDef, drawCompass,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const bmm = catalogEntry('bmm350');
+    const magXDef = fieldDef(bmm, 'magX');
+    const magYDef = fieldDef(bmm, 'magY');
+    const magZDef = fieldDef(bmm, 'magZ');
+    const tempDef = fieldDef(bmm, 'temperatureC');
+
+    $('magXLabel').textContent = magXDef.label;
+    $('magYLabel').textContent = magYDef.label;
+    $('magZLabel').textContent = magZDef.label;
+    $('tempLabel').textContent = tempDef.label;
+    $('tempUnit').textContent = tempDef.unit;
+
+    const compassCanvas = $('compass');
+    const compassCtx = compassCanvas.getContext('2d');
+    const stale = createStaleTracker(bmm.staleAfterMs, (isStale) => {
+      $('magCard').classList.toggle('stale', isStale);
+      $('compassCard').classList.toggle('stale', isStale);
+      $('tempCard').classList.toggle('stale', isStale);
+    });
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('bmm350', (s) => {
+      stale.touch();
+      const meta = formatMeta(s);
+      $('magMeta').textContent = meta;
+      $('compassMeta').textContent = meta;
+
+      const setAxis = (key, def, barId, valId) => {
+        const v = s.fields[key];
+        if (typeof v !== 'number') return;
+        $(valId).textContent = v.toFixed(1);
+        $(barId).style.width = pct(v, def) + '%';
+      };
+      setAxis('magX', magXDef, 'magXBar', 'magXVal');
+      setAxis('magY', magYDef, 'magYBar', 'magYVal');
+      setAxis('magZ', magZDef, 'magZBar', 'magZVal');
+
+      if (typeof s.fields.magX === 'number' && typeof s.fields.magY === 'number') {
+        const heading = Math.atan2(s.fields.magY, s.fields.magX);
+        drawCompass(compassCtx, compassCanvas, heading);
+        $('headingDeg').textContent = ((heading * 180) / Math.PI).toFixed(1);
+      }
+      if (typeof s.fields.temperatureC === 'number') {
+        $('tempVal').textContent = s.fields.temperatureC.toFixed(2);
+        $('tempBar').firstElementChild.style.width = pct(s.fields.temperatureC, tempDef) + '%';
+      }
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'bmm350') {
+        $('magCard').classList.add('stale');
+        $('compassCard').classList.add('stale');
+        $('tempCard').classList.add('stale');
+      }
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

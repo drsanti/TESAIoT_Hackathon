@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex02 — DPS368 Pressure &amp; Temperature</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    #pressBar > div { background: var(--press); }
+    #tempBar > div { background: var(--temp); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>DPS368 — Pressure &amp; Temperature</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <div class="grid grid-2">
+    <div class="card" id="pressCard">
+      <div class="label" id="pressLabel">Pressure</div>
+      <div class="value"><span id="pressVal">–</span> <small id="pressUnit">hPa</small></div>
+      <div class="bar" id="pressBar"><div></div></div>
+      <div class="meta" id="pressMeta"></div>
+    </div>
+    <div class="card" id="tempCard">
+      <div class="label" id="tempLabel">Temperature</div>
+      <div class="value"><span id="tempVal">–</span> <small id="tempUnit">°C</small></div>
+      <div class="bar" id="tempBar"><div></div></div>
+      <div class="meta" id="tempMeta"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 12px;">
+    <div class="label">Pressure history (last 120 samples)</div>
+    <canvas id="chart" class="chart" width="760" height="200"></canvas>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, pct, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      fieldDef, pushHistory, drawSparkline,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const dps = catalogEntry('dps368');
+    const pressDef = fieldDef(dps, 'pressureHpa');
+    const tempDef = fieldDef(dps, 'temperatureC');
+
+    $('pressLabel').textContent = pressDef.label;
+    $('pressUnit').textContent = pressDef.unit;
+    $('tempLabel').textContent = tempDef.label;
+    $('tempUnit').textContent = tempDef.unit;
+
+    const pressHist = [];
+    const canvas = $('chart');
+    const ctx = canvas.getContext('2d');
+    const stale = createStaleTracker(dps.staleAfterMs, (isStale) => {
+      $('pressCard').classList.toggle('stale', isStale);
+      $('tempCard').classList.toggle('stale', isStale);
+    });
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('dps368', (s) => {
+      stale.touch();
+      const meta = formatMeta(s);
+      if (typeof s.fields.pressureHpa === 'number') {
+        $('pressVal').textContent = s.fields.pressureHpa.toFixed(1);
+        $('pressBar').firstElementChild.style.width = pct(s.fields.pressureHpa, pressDef) + '%';
+        $('pressMeta').textContent = meta;
+        pushHistory(pressHist, s.fields.pressureHpa);
+        drawSparkline(ctx, canvas, pressHist, getComputedStyle(document.body).getPropertyValue('--press'));
+      }
+      if (typeof s.fields.temperatureC === 'number') {
+        $('tempVal').textContent = s.fields.temperatureC.toFixed(2);
+        $('tempBar').firstElementChild.style.width = pct(s.fields.temperatureC, tempDef) + '%';
+        $('tempMeta').textContent = meta;
+      }
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'dps368') {
+        $('pressCard').classList.add('stale');
+        $('tempCard').classList.add('stale');
+      }
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex07 — Sensor Catalog Browser</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    body.wide { max-width: 1000px; }
+    .catalog-block { margin-bottom: 16px; }
+    .catalog-block h2 { font-size: 1rem; margin: 0 0 4px; }
+    .tag { display: inline-block; font: 10px monospace; background: #eef0f2; padding: 2px 6px; border-radius: 4px; color: var(--muted); margin-right: 6px; }
+    .live-val { color: var(--accent); font-weight: 600; }
+  </style>
+</head>
+<body class="wide">
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>Sensor Catalog Browser</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <p class="label" style="margin-bottom: 12px;">
+    Static layout from <code>SENSOR_CATALOG</code> (SDK import). Live values update when samples arrive.
+    Catalog version: <strong id="catVersion">–</strong> · Provider: <code id="catUrl">–</code>
+  </p>
+
+  <div id="catalog"></div>
+
+  <script type="module">
+    import { loadSdk, wireConnectionBadge, connectTelemetry } from './shared/ex-demo.js';
+
+    const { TelemetryClient, SENSOR_CATALOG } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const live = new Map();
+
+    $('catVersion').textContent = SENSOR_CATALOG.catalogVersion;
+    $('catUrl').textContent = SENSOR_CATALOG.providerWsUrl;
+
+    const root = $('catalog');
+    for (const sensor of SENSOR_CATALOG.sensors) {
+      const block = document.createElement('div');
+      block.className = 'card catalog-block';
+      block.id = `block-${sensor.id}`;
+      block.innerHTML = `
+        <h2>${sensor.label}</h2>
+        <div class="meta">
+          <span class="tag">id: ${sensor.id}</span>
+          <span class="tag">sensorId: ${sensor.sensorId}</span>
+          <span class="tag">staleAfterMs: ${sensor.staleAfterMs}</span>
+          <span class="tag">default mask: 0x${Number(sensor.defaults.mask).toString(16)}</span>
+        </div>
+        <table class="catalog" style="margin-top:10px">
+          <thead><tr><th>Field</th><th>Key</th><th>Unit</th><th>Range</th><th>Live</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="meta" style="margin-top:8px">maskChannels: ${
+          sensor.maskChannels.map((m) => `${m.label} (bit ${m.bit} → ${m.key})`).join(' · ')
+        }</div>`;
+      const tbody = block.querySelector('tbody');
+      for (const f of sensor.fields) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${f.label}</td>
+          <td><code>${f.key}</code></td>
+          <td>${f.unit}</td>
+          <td class="num">${f.min} … ${f.max}</td>
+          <td class="num live-val" id="live-${sensor.id}-${f.key}">–</td>`;
+        tbody.appendChild(tr);
+        live.set(`${sensor.id}.${f.key}`, tr.lastElementChild);
+      }
+      root.appendChild(block);
+    }
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.on('catalog', (cat) => {
+      $('catVersion').textContent = cat.catalogVersion ?? SENSOR_CATALOG.catalogVersion;
+      if (cat.providerWsUrl) $('catUrl').textContent = cat.providerWsUrl;
+    });
+
+    client.on('sample', (s) => {
+      document.getElementById(`block-${s.sensor}`)?.classList.remove('stale');
+      for (const [key, value] of Object.entries(s.fields)) {
+        const el = live.get(`${s.sensor}.${key}`);
+        if (el && typeof value === 'number') {
+          el.textContent = value.toFixed(key.startsWith('quat') ? 4 : 2);
+        }
+      }
+    });
+
+    client.on('stale', (info) => {
+      document.getElementById(`block-${info.sensor}`)?.classList.add('stale');
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

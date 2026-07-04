@@ -8,3 +8,15 @@ web-app/vendor/
 # Local editor / tooling
 .idea/
 .vscode/
+
+# Published handoff artifacts — keep tracked on GitHub
+# VSIX: vsix/bitstream-studio-*.vsix (Git LFS — see .gitattributes)
+# HEX:  hex/tesaiot-bitstream-*.hex
+# Do not add *.vsix or vsix/*.vsix to this file.
+
+# Maintainer-only (keep local; not published to GitHub)
+AGENT.md
+hex/BUILD.txt
+hex/AGENT.md
+vsix/BUILD.txt
+vsix/AGENT.md

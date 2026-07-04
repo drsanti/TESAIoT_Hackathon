@@ -1,7 +1,0 @@
-source=extension/bitstream-studio-0.1.4.vsix
-source_absolute=/Users/santi/code-2026/Bitstream-Studio/extension/bitstream-studio-0.1.4.vsix
-version=0.1.4
-built=2026-07-04T14:32:43+07:00
-file=bitstream-studio-0.1.4.vsix
-size_bytes=40746801
-bitstream_studio_git=d95a1fa0

@@ -1,6 +1,6 @@
-source=TESAIoT_PSoC_Edge_Workspace/TESAIoT_Firmware/build/app_combined.hex
-source_absolute=D:/CODE/2026/TESAIoT_PSoC_Edge_Workspace/TESAIoT_Firmware/build/app_combined.hex
+source=TESAIoT_PSoC_Edge_Workspace/*/build/app_combined.hex
+source_absolute=/Users/santi/code-2026/TESAIoT_PSoC_Edge_Workspace/TESAIoT_PSoC_Edge/build/app_combined.hex
 bitstream_studio_version=0.1.4
-built=2026-07-03T22:05:19+07:00
+built=2026-07-04T14:10:02+07:00
 file=tesaiot-bitstream-0.1.4.hex
-size_bytes=4951923
+size_bytes=4844788

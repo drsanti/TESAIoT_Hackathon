@@ -8,6 +8,13 @@
       "size": 4844788,
       "date": "2026-07-04",
       "notes": "Bitstream Studio 0.1.4 handoff firmware"
+    },
+    {
+      "version": "0.1.5",
+      "file": "tesaiot-bitstream-0.1.5.hex",
+      "size": 4849760,
+      "date": "2026-07-04",
+      "notes": "Bitstream Studio 0.1.5 — disable WiFi, MQTT, UDP, BLE"
     }
   ]
 }

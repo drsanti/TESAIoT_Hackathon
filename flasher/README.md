@@ -17,10 +17,12 @@ Desktop app to **flash firmware** onto the **TESAIoT PSoC Edge DevKit** over USB
 | `TESAIoT.Flasher.Setup.0.1.5.exe` | **Windows** 10/11 (64-bit) |
 | `TESAIoT.Flasher-0.1.5-arm64.dmg` | **macOS** on Apple Silicon (M1/M2/M3) |
 | `TESAIoT.Flasher-0.1.5.dmg` | **macOS** on Intel Macs |
+| `TESAIoT.Flasher-0.1.5.AppImage` | **Linux** 64-bit (Ubuntu, Fedora, etc.) — no install step |
+| `tesaiot-flasher_0.1.5_amd64.deb` | **Linux** 64-bit (Debian, Ubuntu, Mint, …) |
 
 **Not sure which Mac file?** Try the **arm64** DMG first on Apple Silicon. On Intel Macs, use the other DMG.
 
-**Linux** (`.AppImage` / `.deb`) may be added in a later handoff drop — ask your instructor or check this folder again.
+**Linux:** Prefer the **`.deb`** on Debian/Ubuntu. Use the **`.AppImage`** if you want a portable app or your distro is not `.deb`-based.
 
 ## Install
 
@@ -37,6 +39,22 @@ If KitProg3 is not detected, open the app and use **Install Driver**, then replu
 1. Open the **`.dmg`** for your Mac type.
 2. Drag **TESAIoT Flasher** into **Applications**.
 3. First launch: if macOS blocks the app, **right-click** the app → **Open** → **Open** (needed for unsigned builds).
+
+### Linux
+
+**`.deb` (Debian / Ubuntu / Mint)**
+
+1. Install: `sudo apt install ./tesaiot-flasher_0.1.5_amd64.deb` (or double-click the file in your file manager).
+2. Launch **TESAIoT Flasher** from the app menu.
+
+**`.AppImage` (portable)**
+
+1. Make it executable: `chmod +x TESAIoT.Flasher-0.1.5.AppImage`
+2. Run: `./TESAIoT.Flasher-0.1.5.AppImage`
+
+If the AppImage will not start, install **FUSE** support for your distro (e.g. `libfuse2` on Ubuntu 22.04).
+
+On Linux you may need **udev rules** so KitProg3 is visible without root — ask your instructor if the board is not listed after **Refresh**.
 
 ## Flash firmware
 
@@ -63,6 +81,8 @@ Pair firmware with the matching VSIX — see [`../hex/firmware-manifest.json`](.
 | **No device / no COM port** | Replug USB; another cable or port; **Refresh** in the flasher; Windows → **Install Driver** |
 | **Flash fails** | Pick the correct `.hex`; close other tools using the port; retry after replug |
 | **macOS “unidentified developer”** | Right-click app → **Open** (see Install above) |
+| **Linux: board not listed** | Replug USB; **Refresh**; udev rules for KitProg3; try another USB port |
+| **Linux: AppImage won’t run** | `chmod +x` on the file; install FUSE / `libfuse2` for your distro |
 | **Connected but no data in Bitstream Studio** | Toolbar **Bitstream**; baud **921600**; firmware and VSIX versions match |
 
 More firmware help: [`../hex/README.md`](../hex/README.md) · Extension install: [`../vsix/README.md`](../vsix/README.md)

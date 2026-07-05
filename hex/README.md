@@ -24,7 +24,7 @@ If you only need “what’s newest,” use the **`latest`** field in `firmware-
 
 The desktop flasher can download firmware directly from this GitHub folder.
 
-1. Install and run **TESAIoT Flasher** (see [Bitstream-Studio `TESAIoT_Flasher/README.md`](https://github.com/drsanti/Bitstream-Studio/blob/release/v0.1.0/TESAIoT_Flasher/README.md) for build/install steps).
+1. Install **TESAIoT Flasher** from [`../flasher/`](../flasher/) (see [`flasher/README.md`](../flasher/README.md)).
 2. Connect the DevKit over USB; click **Refresh** if the port does not appear.
 3. In the firmware picker, choose a **GitHub catalog** entry (`tesaiot-bitstream-…`) **or** switch to **Local file** and select the `.hex` you downloaded from this repo.
 4. Run **Flash** and wait until the tool reports success.

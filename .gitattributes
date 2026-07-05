@@ -1,1 +1,5 @@
 *.vsix filter=lfs diff=lfs merge=lfs -text
+flasher/*.exe filter=lfs diff=lfs merge=lfs -text
+flasher/*.dmg filter=lfs diff=lfs merge=lfs -text
+flasher/*.AppImage filter=lfs diff=lfs merge=lfs -text
+flasher/*.deb filter=lfs diff=lfs merge=lfs -text

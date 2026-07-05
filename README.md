@@ -12,6 +12,7 @@ Use this repo to install **Bitstream Studio**, flash your **TESAIoT PSoC Edge De
 |--------|----------------|
 | [`vsix/`](vsix/) | Bitstream Studio extension — install in VS Code or Cursor |
 | [`hex/`](hex/) | DevKit firmware — flash before hardware labs |
+| [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS) |
 | [`web-app/`](web-app/) | Sample HTML pages that show live sensor readings |
 
 **Tip:** Use the **same version number** for the VSIX and firmware when you can (for example `0.1.5` for both). Check [`hex/firmware-manifest.json`](hex/firmware-manifest.json) for available firmware builds and notes.
@@ -24,7 +25,7 @@ Use this repo to install **Bitstream Studio**, flash your **TESAIoT PSoC Edge De
 |------|------------------|
 | [VS Code](https://code.visualstudio.com/) or [Cursor](https://cursor.com/) | Always — to run Bitstream Studio |
 | **TESAIoT PSoC Edge DevKit** + USB cable | Hardware labs (**Bitstream** mode) |
-| **TESAIoT Flasher** or **ModusToolbox** | To flash firmware from [`hex/`](hex/) |
+| **TESAIoT Flasher** or **ModusToolbox** | To flash firmware from [`hex/`](hex/) — installers in [`flasher/`](flasher/) |
 | **Bitstream Simulator** extension (optional) | Try the UI **without** a board (**Simulator** mode) |
 
 ---
@@ -67,7 +68,7 @@ code --uninstall-extension TERNIONDEV.bitstream-studio
 ### 3. Flash firmware (hardware labs)
 
 1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX.
-2. Flash the board with **TESAIoT Flasher** or **ModusToolbox**.
+2. Flash the board with **TESAIoT Flasher** ([`flasher/`](flasher/)) or **ModusToolbox**.
 3. If no serial port appears, unplug and replug the USB cable.
 
 More detail: [`hex/README.md`](hex/README.md)

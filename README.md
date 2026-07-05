@@ -12,7 +12,7 @@ Use this repo to install **Bitstream Studio**, flash your **TESAIoT PSoC Edge De
 |--------|----------------|
 | [`vsix/`](vsix/) | Bitstream Studio extension — install in VS Code or Cursor |
 | [`hex/`](hex/) | DevKit firmware — flash before hardware labs |
-| [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS) |
+| [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
 | [`web-app/`](web-app/) | Sample HTML pages that show live sensor readings |
 
 **Tip:** Use the **same version number** for the VSIX and firmware when you can (for example `0.1.5` for both). Check [`hex/firmware-manifest.json`](hex/firmware-manifest.json) for available firmware builds and notes.
@@ -136,8 +136,9 @@ Use one mode at a time. Switching modes clears old sample data.
 | **VSIX will not install** | Use VS Code 1.85+ or a current Cursor build; download the VSIX again |
 | **Bitstream panel is blank** | Reload the webview or reload the window; check the extension is enabled |
 | **No COM port** | Re-flash firmware; try another USB port or cable; on Windows, install the KitProg3 driver |
+| **Linux: board not listed** | Replug USB; **Refresh** in the flasher; udev rules for KitProg3 — see [`flasher/README.md`](flasher/README.md) |
 | **Port open but no sensor data** | Toolbar set to **Bitstream**; baud **921600**; VSIX and firmware versions match |
 | **Web examples show no data** | Bitstream Studio is open; board or simulator connected; you used **Serve Web App Folder over HTTP** on the `web-app` folder |
 | **Missing 3D models** | Command Palette → **Download Free Assets from GitHub** |
 
-Step-by-step help: [`vsix/README.md`](vsix/README.md) · [`hex/README.md`](hex/README.md)
+Step-by-step help: [`vsix/README.md`](vsix/README.md) · [`hex/README.md`](hex/README.md) · [`flasher/README.md`](flasher/README.md)

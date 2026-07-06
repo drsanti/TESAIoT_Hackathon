@@ -3,18 +3,25 @@
   "latest": "0.1.5",
   "firmware": [
     {
-      "version": "0.1.4",
-      "file": "tesaiot-bitstream-0.1.4.hex",
-      "size": 4844788,
-      "date": "2026-07-04",
-      "notes": "Bitstream Studio 0.1.4 handoff firmware"
-    },
-    {
       "version": "0.1.5",
       "file": "tesaiot-bitstream-0.1.5.hex",
+      "size": 5466327,
+      "date": "2026-07-06",
+      "notes": "Bitstream Studio 0.1.5 add streaming modes and improve HMI"
+    },
+    {
+      "version": "0.1.4",
+      "file": "tesaiot-bitstream-0.1.4.hex",
       "size": 4849760,
       "date": "2026-07-04",
-      "notes": "Bitstream Studio 0.1.5 — disable WiFi, MQTT, UDP, BLE"
+      "notes": "Bitstream Studio 0.1.4 — disable WiFi, MQTT, UDP, BLE"
+    },
+    {
+      "version": "0.1.3",
+      "file": "tesaiot-bitstream-0.1.3.hex",
+      "size": 4844788,
+      "date": "",
+      "notes": ""
     }
   ]
 }

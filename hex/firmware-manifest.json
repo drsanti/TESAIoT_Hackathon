@@ -7,7 +7,7 @@
       "file": "tesaiot-bitstream-0.1.5.hex",
       "size": 5466327,
       "date": "2026-07-06",
-      "notes": "Bitstream Studio 0.1.5 add streaming modes and improve HMI"
+      "notes": "Bitstream Studio 0.1.5 — linear LED 0.01% steps, Actuator Config, stream policy, HMI"
     },
     {
       "version": "0.1.4",

@@ -62,12 +62,9 @@
   </div>
 
   <script type="module">
-    // SDK loading, in preference order:
-    // 1. /sdk/live-data.js — the VSIX-shipped bundle, available when this page is
-    //    served by the extension ("Serve Web App Folder over HTTP").
-    // 2. ./vendor/live-data.js — local copy fallback (npx serve, python http.server, ...).
-    const { TelemetryClient, catalogEntry } = await import('/sdk/live-data.js')
-      .catch(() => import('./vendor/live-data.js'));
+    // VSIX-shipped @bitstream SDK — available when served by Bitstream Studio
+    // ("Serve Web App Folder over HTTP").
+    const { TelemetryClient, catalogEntry } = await import('/@bitstream/ws-live-data.js');
 
     const $ = (id) => document.getElementById(id);
     const stateEl = $('state'), routeEl = $('route');

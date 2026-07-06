@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex11 — MQTT Wildcards</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>MQTT Wildcards &amp; log</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Subscribe with <code>+</code> (one level) or <code>#</code> (multi-level) filters.
+    Pair with <a href="ex10_mqtt_publisher.html">ex10</a> for a self-contained lab loop.
+  </p>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <label for="filter">Primary filter</label>
+      <input id="filter" type="text" value="sensors/+/temp" />
+      <button type="button" class="btn primary" id="subscribeBtn">Subscribe</button>
+    </div>
+    <div class="ctrl-row">
+      <label><input type="checkbox" id="alsoHash" /> Also subscribe to <code>sensors/#</code></label>
+      <button type="button" class="btn" id="clearBtn">Clear log</button>
+    </div>
+    <div class="label">Message log (newest first)</div>
+    <pre class="log" id="log">Waiting for messages…</pre>
+  </div>
+
+  <script type="module">
+    import {
+      loadMqttGlobal,
+      queryParam,
+      connectMqtt,
+      wireMqttState,
+      appendLog,
+      DEFAULT_MQTT_WS_PATH,
+    } from "./shared/ex-mqtt.js";
+
+    const mqtt = await loadMqttGlobal();
+    const MQTT_URL = queryParam("mqtt", DEFAULT_MQTT_WS_PATH);
+    const filterInput = document.getElementById("filter");
+    filterInput.value = queryParam("topic", "sensors/+/temp");
+
+    const logEl = document.getElementById("log");
+    const stateEl = document.getElementById("state");
+    const client = connectMqtt(mqtt, MQTT_URL);
+    const activeFilters = new Set();
+
+    wireMqttState(client, stateEl, {
+      onConnect() {
+        subscribeFilters();
+      },
+    });
+
+    function subscribeFilters() {
+      const primary = filterInput.value.trim();
+      const filters = [primary];
+      if (document.getElementById("alsoHash").checked) {
+        filters.push("sensors/#");
+      }
+      for (const f of filters) {
+        if (!f || activeFilters.has(f)) continue;
+        client.subscribe(f, { qos: 0 }, (err) => {
+          if (err) {
+            appendLog(logEl, `[error] subscribe ${f}: ${err.message || err}`);
+            return;
+          }
+          activeFilters.add(f);
+          appendLog(logEl, `[subscribed] ${f}`);
+        });
+      }
+    }
+
+    document.getElementById("subscribeBtn").addEventListener("click", () => {
+      activeFilters.clear();
+      logEl.textContent = "";
+      subscribeFilters();
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      logEl.textContent = "";
+    });
+
+    client.on("message", (topic, buf) => {
+      let body = buf.toString("utf8");
+      try {
+        body = JSON.stringify(JSON.parse(body));
+      } catch {
+        /* keep raw */
+      }
+      const line = `${new Date().toLocaleTimeString()}  ${topic}  ${body}`;
+      appendLog(logEl, line, 50);
+    });
+  </script>
+</body>
+</html>

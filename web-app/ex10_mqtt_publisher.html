@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex10 — MQTT Publisher</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>MQTT Publisher</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Publishes sample JSON to a lab topic on <code>ws://127.0.0.1:8883</code>.
+    Open <a href="ex11_mqtt_wildcards.html">ex11</a> in another tab to see inbound messages.
+    Query: <code>?mqtt=</code>, <code>?topic=</code>.
+  </p>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <label for="topic">Topic</label>
+      <input id="topic" type="text" value="sensors/lab/temp" />
+    </div>
+    <div class="ctrl-row">
+      <button type="button" class="btn primary" id="publishOnce">Publish once</button>
+      <label><input type="checkbox" id="autoPublish" /> Auto every 1 s</label>
+    </div>
+    <pre class="payload" id="status">Connecting…</pre>
+  </div>
+
+  <script type="module">
+    import {
+      loadMqttGlobal,
+      queryParam,
+      connectMqtt,
+      wireMqttState,
+      DEFAULT_MQTT_WS_PATH,
+    } from "./shared/ex-mqtt.js";
+
+    const mqtt = await loadMqttGlobal();
+    const MQTT_URL = queryParam("mqtt", DEFAULT_MQTT_WS_PATH);
+    const topicInput = document.getElementById("topic");
+    topicInput.value = queryParam("topic", "sensors/lab/temp");
+
+    const statusEl = document.getElementById("status");
+    const stateEl = document.getElementById("state");
+    const client = connectMqtt(mqtt, MQTT_URL);
+    let autoTimer = null;
+    let connected = false;
+
+    wireMqttState(client, stateEl, {
+      onConnect() {
+        connected = true;
+        statusEl.textContent = "Ready to publish.";
+      },
+      onClose() {
+        connected = false;
+      },
+    });
+
+    function samplePayload() {
+      return { c: +(20 + Math.random() * 12).toFixed(2), ts: Date.now() };
+    }
+
+    function publishOnce() {
+      if (!connected) {
+        statusEl.textContent = "Not connected — start the MQTT broker.";
+        return;
+      }
+      const topic = topicInput.value.trim();
+      const body = samplePayload();
+      client.publish(topic, JSON.stringify(body), { qos: 0 }, (err) => {
+        if (err) {
+          statusEl.textContent = "Publish failed: " + String(err.message || err);
+          return;
+        }
+        statusEl.textContent = `Published to ${topic}\n${JSON.stringify(body, null, 2)}`;
+      });
+    }
+
+    document.getElementById("publishOnce").addEventListener("click", publishOnce);
+
+    document.getElementById("autoPublish").addEventListener("change", (e) => {
+      clearInterval(autoTimer);
+      autoTimer = null;
+      if (e.target.checked) {
+        publishOnce();
+        autoTimer = setInterval(publishOnce, 1000);
+      }
+    });
+  </script>
+</body>
+</html>

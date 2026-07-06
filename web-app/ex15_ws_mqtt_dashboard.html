@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex15 — WS vs MQTT Dashboard</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body class="wide">
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>WS vs MQTT dashboard</h1>
+    <span id="state">disconnected</span>
+    <span id="transportLabel"></span>
+  </header>
+
+  <p class="hint">
+  Switch between the T3D WebSocket bus (<code>:9998</code>) and MQTT-over-WS (<code>:8883</code>).
+  Use <a href="ex10_mqtt_publisher.html">ex10</a> for MQTT traffic or any publisher on <code>sensors/#</code>.
+  </p>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <label for="transport">Transport</label>
+      <select id="transport">
+        <option value="mqtt">MQTT (ws://127.0.0.1:8883)</option>
+        <option value="websocket">WebSocket (ws://127.0.0.1:9998)</option>
+      </select>
+      <label for="filter">Filter</label>
+      <input id="filter" type="text" value="sensors/#" />
+      <button type="button" class="btn primary" id="connectBtn">Connect</button>
+    </div>
+    <div class="label">Latest numeric field</div>
+    <div class="value" id="latest">–</div>
+    <div class="meta" id="topicMeta"></div>
+    <canvas id="chart" class="chart" width="900" height="200"></canvas>
+  </div>
+
+  <script type="module">
+    import { loadLiveDataClient } from "./shared/ex-live-data.js";
+    import { drawSparkline } from "./shared/ex-demo.js";
+
+    const { LiveDataClient, DEFAULT_MQTT_WS_URL, DEFAULT_T3D_WS_URL } = await loadLiveDataClient();
+
+    const stateEl = document.getElementById("state");
+    const transportLabel = document.getElementById("transportLabel");
+    const latestEl = document.getElementById("latest");
+    const topicMeta = document.getElementById("topicMeta");
+    const canvas = document.getElementById("chart");
+    const ctx = canvas.getContext("2d");
+    const points = [];
+
+    let client = null;
+
+    function firstNumeric(payload) {
+      if (payload == null) return null;
+      if (typeof payload === "number") return payload;
+      if (typeof payload !== "object") return null;
+      for (const v of Object.values(payload)) {
+        if (typeof v === "number" && Number.isFinite(v)) return v;
+      }
+      return null;
+    }
+
+    async function connect() {
+      if (client) {
+        try {
+          await client.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      points.length = 0;
+      latestEl.textContent = "–";
+      topicMeta.textContent = "";
+
+      const transport = document.getElementById("transport").value;
+      const filter = document.getElementById("filter").value.trim() || "sensors/#";
+      const url = transport === "mqtt" ? DEFAULT_MQTT_WS_URL : DEFAULT_T3D_WS_URL;
+      transportLabel.textContent = url;
+
+      client = new LiveDataClient({
+        transport,
+        url,
+        clientId: "ex15-" + Math.random().toString(16).slice(2, 8),
+      });
+
+      client.on("state", (s) => {
+        stateEl.textContent = s;
+        stateEl.className = s === "connected" ? "connected" : "";
+      });
+      client.on("error", () => {
+        stateEl.textContent = "error";
+        stateEl.className = "";
+      });
+
+      await client.connect();
+      await client.subscribe(filter, (msg) => {
+        const n = firstNumeric(msg.payload);
+        if (n == null) return;
+        latestEl.textContent = n.toFixed(2);
+        topicMeta.textContent = `${msg.topic} · qos ${msg.qos}`;
+        points.push(n);
+        if (points.length > 120) points.shift();
+        drawSparkline(ctx, canvas, points, getComputedStyle(document.body).getPropertyValue("--accent"));
+      });
+    }
+
+    document.getElementById("connectBtn").addEventListener("click", () => {
+      void connect().catch(() => {
+        stateEl.textContent = "error";
+      });
+    });
+
+    void connect();
+  </script>
+</body>
+</html>

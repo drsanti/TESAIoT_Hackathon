@@ -30,8 +30,8 @@
   </header>
 
   <p class="lead">
-  Self-contained HTML pages that consume live sensor data from the Bitstream Telemetry Provider
-  (<code>ws://127.0.0.1:9997</code>) via the <code>@bitstream/live-data</code> SDK.
+  Self-contained HTML pages for the Bitstream telemetry provider (<code>ws://127.0.0.1:9997</code>)
+  and MQTT broker (<code>ws://127.0.0.1:8883</code>) via <code>/@bitstream/</code> SDK assets.
   </p>
 
   <div class="steps">
@@ -39,13 +39,11 @@
     <ol>
       <li>Install <strong>Bitstream Studio</strong> from the <code>vsix/</code> folder in this repo (VS Code → Extensions → Install from VSIX).</li>
       <li>Start backend services (bridge + telemetry provider) — automatic on extension activate, or run Bitstream Studio dev bridge if you build from source.</li>
-      <li>Command Palette → <strong>Serve Web App Folder over HTTP</strong> → select this <code>web-app</code> folder (serves pages + <code>/sdk/live-data.js</code>).</li>
+      <li>Toolbar <strong>Server</strong> → <strong>Start broker</strong> for MQTT examples (ex09–ex15).</li>
+      <li>Command Palette → <strong>Serve Web App Folder over HTTP</strong> → select this <code>web-app</code> folder (serves pages + <code>/@bitstream/ws-live-data.js</code> and <code>/@bitstream/mqtt-live-data.js</code>).</li>
       <li>Open the catalog URL from the notification (or browse to <code>index.html</code>).</li>
       <li>Connect a device (toolbar <strong>Bitstream</strong> + COM) or external Simulator (toolbar <strong>Simulator</strong>) so samples flow to the provider.</li>
     </ol>
-    <p style="margin: 10px 0 0; font-size: 0.85rem; color: var(--muted);">
-      Offline fallback: copy <code>live-data.browser.js</code> to <code>vendor/live-data.js</code> in this folder and use any static server (<code>npx serve .</code> from <code>web-app/</code>).
-    </p>
   </div>
 
   <p class="section-label">Per-sensor</p>
@@ -108,6 +106,59 @@
         <div class="id">ex08</div>
         <div class="title">Stale Events &amp; Route / Origin</div>
         <div class="desc">Event log for connection route, per-sample origin, and provider stale events.</div>
+      </a>
+    </li>
+  </ul>
+
+  <p class="section-label">Connectivity (MQTT)</p>
+  <ul class="catalog">
+    <li>
+      <a href="ex09_mqtt_subscriber.html">
+        <div class="id">ex09</div>
+        <div class="title">MQTT Subscriber</div>
+        <div class="desc">Raw subscribe smoke test — DevKit Twin telemetry JSON.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex10_mqtt_publisher.html">
+        <div class="id">ex10</div>
+        <div class="title">MQTT Publisher</div>
+        <div class="desc">Publish lab JSON to <code>sensors/lab/temp</code> (manual or 1 Hz).</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex11_mqtt_wildcards.html">
+        <div class="id">ex11</div>
+        <div class="title">Wildcards &amp; message log</div>
+        <div class="desc"><code>sensors/+/temp</code> and optional <code>sensors/#</code> filter log.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex12_mqtt_devkit_gauges.html">
+        <div class="id">ex12</div>
+        <div class="title">DevKit Twin gauges</div>
+        <div class="desc">Parse <code>channels</code> payload → temperature / humidity / pressure cards.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex13_mqtt_live_data_client.html">
+        <div class="id">ex13</div>
+        <div class="title">LiveDataClient MQTT</div>
+        <div class="desc">SDK connect, subscribe, and publish (no raw mqtt.js).</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex14_mqtt_qos_retain.html">
+        <div class="id">ex14</div>
+        <div class="title">QoS &amp; retain</div>
+        <div class="desc">QoS 0/1/2 and retain flag lab.</div>
+      </a>
+    </li>
+    <li>
+      <a href="ex15_ws_mqtt_dashboard.html">
+        <div class="id">ex15</div>
+        <div class="title">WS vs MQTT dashboard</div>
+        <div class="desc">Switch <code>:9998</code> WebSocket bus vs <code>:8883</code> MQTT — live chart.</div>
       </a>
     </li>
   </ul>

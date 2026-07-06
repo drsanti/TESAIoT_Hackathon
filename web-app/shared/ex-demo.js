@@ -3,9 +3,9 @@
  * ex01 remains self-contained; import this module from sibling HTML pages.
  */
 
-/** Load TelemetryClient + catalog from VSIX SDK or local vendor fallback. */
+/** Load TelemetryClient + catalog from VSIX /@bitstream/ SDK (Serve Web App Folder). */
 export async function loadSdk() {
-  const mod = await import('/sdk/live-data.js').catch(() => import('../vendor/live-data.js'));
+  const mod = await import('/@bitstream/ws-live-data.js');
   return {
     TelemetryClient: mod.TelemetryClient,
     catalogEntry: mod.catalogEntry,

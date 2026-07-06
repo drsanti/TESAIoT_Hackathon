@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex13 — LiveDataClient MQTT</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>LiveDataClient — MQTT</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Same <code>@bitstream/live-data</code> SDK as ex15, fixed to MQTT transport.
+    Subscribe / publish without raw <code>mqtt.js</code> calls.
+  </p>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <label for="filter">Subscribe</label>
+      <input id="filter" type="text" value="sensors/lab/temp" />
+      <button type="button" class="btn primary" id="applyBtn">Connect &amp; subscribe</button>
+    </div>
+    <div class="ctrl-row">
+      <button type="button" class="btn" id="publishBtn">Publish sample</button>
+      <button type="button" class="btn" id="clearBtn">Clear log</button>
+    </div>
+    <pre class="log" id="log">Starting…</pre>
+  </div>
+
+  <script type="module">
+    import { loadLiveDataClient } from "./shared/ex-live-data.js";
+    import { appendLog } from "./shared/ex-mqtt.js";
+
+    const { LiveDataClient, DEFAULT_MQTT_WS_URL } = await loadLiveDataClient();
+    const logEl = document.getElementById("log");
+    const stateEl = document.getElementById("state");
+    const filterInput = document.getElementById("filter");
+
+    let client = null;
+    let currentFilter = "";
+
+    function log(...parts) {
+      appendLog(logEl, parts.join(" "), 60);
+    }
+
+    async function start() {
+      if (client) {
+        try {
+          await client.disconnect();
+        } catch {
+          /* ignore */
+        }
+      }
+      currentFilter = filterInput.value.trim() || "sensors/lab/temp";
+      client = new LiveDataClient({
+        transport: "mqtt",
+        url: DEFAULT_MQTT_WS_URL,
+        clientId: "ex13-" + Math.random().toString(16).slice(2, 8),
+      });
+
+      client.on("state", (s) => {
+        stateEl.textContent = s;
+        stateEl.className = s === "connected" ? "connected" : "";
+        log("[state]", s);
+      });
+      client.on("error", (e) => log("[error]", e.message));
+
+      await client.connect();
+      await client.subscribe(currentFilter, (msg) => {
+        const body =
+          typeof msg.payload === "object" ? JSON.stringify(msg.payload) : String(msg.payload);
+        log(`[rx] ${msg.topic} qos=${msg.qos}`, body);
+      }, { qos: 0 });
+      log("[subscribed]", currentFilter);
+    }
+
+    document.getElementById("applyBtn").addEventListener("click", () => {
+      void start().catch((e) => log("[fail]", e.message || String(e)));
+    });
+
+    document.getElementById("publishBtn").addEventListener("click", async () => {
+      if (!client) return;
+      const topic = currentFilter.includes("+") || currentFilter.includes("#")
+        ? "sensors/lab/temp"
+        : currentFilter;
+      const payload = { c: +(22 + Math.random() * 5).toFixed(2), ts: Date.now() };
+      try {
+        await client.publish(topic, payload, { qos: 0 });
+        log("[tx]", topic, JSON.stringify(payload));
+      } catch (e) {
+        log("[publish fail]", e.message || String(e));
+      }
+    });
+
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      logEl.textContent = "";
+    });
+
+    void start().catch((e) => log("[fail]", e.message || String(e)));
+  </script>
+</body>
+</html>

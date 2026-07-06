@@ -97,9 +97,10 @@ The [`web-app/`](web-app/) folder has simple HTML pages that display **live sens
 ### How to run
 
 1. Complete steps 2 and 4 above (extension installed, telemetry connected).
-2. Command Palette → **Serve Web App Folder over HTTP** → select the **`web-app`** folder from this repo.
-3. Click the link in the notification, or open **`index.html`** from that served URL.
-4. Choose an example from the list.
+2. For MQTT examples (ex09–ex15): toolbar **Server** → **Start broker**.
+3. Command Palette → **Serve Web App Folder over HTTP** → select the **`web-app`** folder from this repo.
+4. Click the link in the notification, or open **`index.html`** from that served URL.
+5. Choose an example from the list.
 
 Open [`web-app/index.html`](web-app/index.html) in the served site for a full catalog and short instructions.
 
@@ -115,6 +116,13 @@ Open [`web-app/index.html`](web-app/index.html) in the served site for a full ca
 | [ex06 — Dashboard](web-app/ex06_dashboard.html) | All four sensors |
 | [ex07 — Catalog browser](web-app/ex07_catalog_browser.html) | Browse sensor catalog |
 | [ex08 — Stale / route](web-app/ex08_stale_and_route.html) | Connection status demo |
+| [ex09 — MQTT subscriber](web-app/ex09_mqtt_subscriber.html) | MQTT broker smoke test (`ws://127.0.0.1:8883`) |
+| [ex10 — MQTT publisher](web-app/ex10_mqtt_publisher.html) | Publish lab JSON to `sensors/lab/temp` |
+| [ex11 — MQTT wildcards](web-app/ex11_mqtt_wildcards.html) | `sensors/+/temp` and `sensors/#` filter log |
+| [ex12 — DevKit gauges](web-app/ex12_mqtt_devkit_gauges.html) | Parse MQTT `channels` payload to gauge cards |
+| [ex13 — LiveDataClient MQTT](web-app/ex13_mqtt_live_data_client.html) | SDK connect, subscribe, and publish |
+| [ex14 — QoS & retain](web-app/ex14_mqtt_qos_retain.html) | QoS 0/1/2 and retain flag lab |
+| [ex15 — WS vs MQTT dashboard](web-app/ex15_ws_mqtt_dashboard.html) | Switch `:9998` WebSocket bus vs `:8883` MQTT |
 
 ---
 

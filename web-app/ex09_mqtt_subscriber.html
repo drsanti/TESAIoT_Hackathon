@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex09 — MQTT Subscriber</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>MQTT Subscriber</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Subscribes to <code id="topic-label">—</code> on the Bitstream MQTT broker
+    (<code>ws://127.0.0.1:8883</code>). Start the broker from Bitstream Studio → toolbar Server →
+    <strong>Start broker</strong>. Query overrides: <code>?mqtt=</code>, <code>?device=</code>, <code>?topic=</code>.
+  </p>
+
+  <div class="chip-grid">
+    <div class="chip" id="chip-broker"><label>Broker</label><span>—</span></div>
+    <div class="chip" id="chip-topic"><label>Topic</label><span>—</span></div>
+    <div class="chip" id="chip-messages"><label>Messages</label><span>0</span></div>
+    <div class="chip" id="chip-channels"><label>Channels</label><span>—</span></div>
+  </div>
+
+  <div class="card">
+    <div class="label">Last payload</div>
+    <pre class="payload" id="payload">Waiting for messages…</pre>
+  </div>
+
+  <script type="module">
+    import {
+      loadMqttGlobal,
+      queryParam,
+      connectMqtt,
+      wireMqttState,
+      setChip,
+      devkitTwinTopic,
+      DEFAULT_MQTT_WS_PATH,
+    } from "./shared/ex-mqtt.js";
+
+    const mqtt = await loadMqttGlobal();
+    const MQTT_URL = queryParam("mqtt", DEFAULT_MQTT_WS_PATH);
+    const DEVICE_ID = queryParam("device", "devkit-twin-01");
+    const TOPIC = queryParam("topic", devkitTwinTopic(DEVICE_ID));
+
+    let messageCount = 0;
+    const payloadEl = document.getElementById("payload");
+    const stateEl = document.getElementById("state");
+
+    document.getElementById("topic-label").textContent = TOPIC;
+    setChip("chip-topic", TOPIC.length > 36 ? "…" + TOPIC.slice(-34) : TOPIC);
+    setChip("chip-broker", "Connecting…", "warn");
+    stateEl.textContent = "connecting";
+
+    const client = connectMqtt(mqtt, MQTT_URL);
+
+    wireMqttState(client, stateEl, {
+      onConnect() {
+        setChip("chip-broker", "Connected", "ok");
+        client.subscribe(TOPIC, { qos: 0 }, (err) => {
+          if (err) {
+            setChip("chip-broker", "Subscribe failed", "err");
+            payloadEl.textContent = String(err.message || err);
+            return;
+          }
+          payloadEl.textContent =
+            "Subscribed — publish from DevKit Twin MQTT tab or Sensor Studio connectivity nodes.";
+        });
+      },
+      onReconnect() {
+        setChip("chip-broker", "Reconnecting…", "warn");
+      },
+      onError(err) {
+        setChip("chip-broker", "Error", "err");
+        payloadEl.textContent = err && err.message ? err.message : String(err);
+      },
+      onClose() {
+        setChip("chip-broker", "Disconnected", "err");
+      },
+    });
+
+    client.on("message", (topic, buf) => {
+      if (topic !== TOPIC) return;
+      messageCount += 1;
+      setChip("chip-messages", String(messageCount), messageCount > 0 ? "ok" : "");
+      try {
+        const json = JSON.parse(buf.toString("utf8"));
+        const channelCount =
+          json && json.channels && typeof json.channels === "object"
+            ? Object.keys(json.channels).length
+            : 0;
+        setChip(
+          "chip-channels",
+          channelCount > 0 ? String(channelCount) : "—",
+          channelCount > 0 ? "ok" : "",
+        );
+        payloadEl.textContent = JSON.stringify(json, null, 2);
+      } catch {
+        payloadEl.textContent = buf.toString("utf8");
+      }
+    });
+  </script>
+</body>
+</html>

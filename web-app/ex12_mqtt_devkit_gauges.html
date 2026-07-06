@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex12 — DevKit Twin MQTT Gauges</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+  <style>
+    #tempBar > div { background: var(--temp); }
+    #humBar > div { background: var(--hum); }
+    #pressBar > div { background: var(--press); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>DevKit Twin — MQTT gauges</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Parses <code>channels</code> from <code id="topic-label">—</code>.
+    Publish from DevKit Twin MQTT tab. Query: <code>?device=</code>, <code>?mqtt=</code>.
+  </p>
+
+  <div class="ctrl-row">
+    <label for="device">Device</label>
+    <input id="device" type="text" value="devkit-twin-01" />
+  </div>
+
+  <div class="grid grid-2" id="gaugeGrid">
+    <div class="card" id="tempCard">
+      <div class="label" id="tempLabel">Temperature</div>
+      <div class="value sm"><span id="tempVal">–</span> <small id="tempUnit">°C</small></div>
+      <div class="bar" id="tempBar"><div></div></div>
+    </div>
+    <div class="card" id="humCard">
+      <div class="label" id="humLabel">Humidity</div>
+      <div class="value sm"><span id="humVal">–</span> <small id="humUnit">%RH</small></div>
+      <div class="bar" id="humBar"><div></div></div>
+    </div>
+    <div class="card" id="pressCard">
+      <div class="label" id="pressLabel">Pressure</div>
+      <div class="value sm"><span id="pressVal">–</span> <small id="pressUnit">hPa</small></div>
+      <div class="bar" id="pressBar"><div></div></div>
+    </div>
+    <div class="card" id="metaCard">
+      <div class="label">Stream</div>
+      <div class="meta" id="metaLine">—</div>
+      <div class="label" style="margin-top:8px">Other channels</div>
+      <pre class="payload" id="extraChannels" style="min-height:60px;font-size:11px">—</pre>
+    </div>
+  </div>
+
+  <script type="module">
+    import { loadSdk, pct, fieldDef, createStaleTracker } from "./shared/ex-demo.js";
+    import {
+      loadMqttGlobal,
+      queryParam,
+      connectMqtt,
+      wireMqttState,
+      devkitTwinTopic,
+      DEFAULT_MQTT_WS_PATH,
+    } from "./shared/ex-mqtt.js";
+
+    const { catalogEntry } = await loadSdk();
+    const mqtt = await loadMqttGlobal();
+
+    const sht40 = catalogEntry("sht40");
+    const dps = catalogEntry("dps368");
+    const tempDef = fieldDef(sht40, "temperatureC");
+    const humDef = fieldDef(sht40, "humidityPct");
+    const pressDef = fieldDef(dps, "pressureHpa");
+
+    const $ = (id) => document.getElementById(id);
+    $("tempLabel").textContent = tempDef.label;
+    $("tempUnit").textContent = tempDef.unit;
+    $("humLabel").textContent = humDef.label;
+    $("humUnit").textContent = humDef.unit;
+    $("pressLabel").textContent = pressDef.label;
+    $("pressUnit").textContent = pressDef.unit;
+
+    const deviceInput = $("device");
+    deviceInput.value = queryParam("device", "devkit-twin-01");
+    const MQTT_URL = queryParam("mqtt", DEFAULT_MQTT_WS_PATH);
+
+    let topic = devkitTwinTopic(deviceInput.value);
+    $("topic-label").textContent = topic;
+
+    let messageCount = 0;
+    const stale = createStaleTracker(sht40.staleAfterMs, (isStale) => {
+      $("tempCard").classList.toggle("stale", isStale);
+      $("humCard").classList.toggle("stale", isStale);
+      $("pressCard").classList.toggle("stale", isStale);
+    });
+
+    const stateEl = $("state");
+    const client = connectMqtt(mqtt, MQTT_URL);
+
+    function applyChannels(channels) {
+      if (!channels || typeof channels !== "object") return;
+      const known = new Set([
+        "sht40.temperatureC",
+        "sht40.humidityPct",
+        "dps368.pressureHpa",
+      ]);
+
+      if (typeof channels["sht40.temperatureC"] === "number") {
+        const v = channels["sht40.temperatureC"];
+        $("tempVal").textContent = v.toFixed(1);
+        $("tempBar").firstElementChild.style.width = pct(v, tempDef) + "%";
+      }
+      if (typeof channels["sht40.humidityPct"] === "number") {
+        const v = channels["sht40.humidityPct"];
+        $("humVal").textContent = v.toFixed(1);
+        $("humBar").firstElementChild.style.width = pct(v, humDef) + "%";
+      }
+      if (typeof channels["dps368.pressureHpa"] === "number") {
+        const v = channels["dps368.pressureHpa"];
+        $("pressVal").textContent = v.toFixed(1);
+        $("pressBar").firstElementChild.style.width = pct(v, pressDef) + "%";
+      }
+
+      const extra = {};
+      for (const [k, v] of Object.entries(channels)) {
+        if (!known.has(k)) extra[k] = v;
+      }
+      $("extraChannels").textContent =
+        Object.keys(extra).length > 0 ? JSON.stringify(extra, null, 2) : "—";
+    }
+
+    wireMqttState(client, stateEl, {
+      onConnect() {
+        topic = devkitTwinTopic(deviceInput.value.trim() || "devkit-twin-01");
+        $("topic-label").textContent = topic;
+        client.subscribe(topic, { qos: 0 });
+      },
+    });
+
+    client.on("message", (t, buf) => {
+      if (t !== topic) return;
+      messageCount += 1;
+      stale.touch();
+      $("metaLine").textContent = `${messageCount} messages · ${new Date().toLocaleTimeString()}`;
+      try {
+        const json = JSON.parse(buf.toString("utf8"));
+        applyChannels(json.channels);
+      } catch {
+        $("extraChannels").textContent = buf.toString("utf8");
+      }
+    });
+
+    deviceInput.addEventListener("change", () => {
+      topic = devkitTwinTopic(deviceInput.value.trim() || "devkit-twin-01");
+      $("topic-label").textContent = topic;
+      if (stateEl.className === "connected") {
+        client.subscribe(topic, { qos: 0 });
+      }
+    });
+  </script>
+</body>
+</html>

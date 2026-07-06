@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex14 — MQTT QoS &amp; Retain</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <link rel="stylesheet" href="./shared/ex-mqtt.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>MQTT QoS &amp; retain</h1>
+    <span id="state">disconnected</span>
+  </header>
+
+  <p class="hint">
+    Experiment with QoS and the retain flag. Open <a href="ex11_mqtt_wildcards.html">ex11</a>
+    subscribed to the same topic to observe retained messages on connect.
+  </p>
+
+  <div class="card">
+    <div class="ctrl-row">
+      <label for="topic">Topic</label>
+      <input id="topic" type="text" value="lab/qos-demo" />
+    </div>
+    <div class="ctrl-row">
+      <span class="hint" style="margin:0">QoS</span>
+      <span class="qos-group" id="qosGroup">
+        <button type="button" data-qos="0" class="active">0</button>
+        <button type="button" data-qos="1">1</button>
+        <button type="button" data-qos="2">2</button>
+      </span>
+      <label><input type="checkbox" id="retain" /> Retain</label>
+      <button type="button" class="btn primary" id="publishBtn">Publish</button>
+    </div>
+    <pre class="log" id="log">—</pre>
+  </div>
+
+  <script type="module">
+    import {
+      loadMqttGlobal,
+      connectMqtt,
+      wireMqttState,
+      appendLog,
+      DEFAULT_MQTT_WS_PATH,
+    } from "./shared/ex-mqtt.js";
+
+    const mqtt = await loadMqttGlobal();
+    const logEl = document.getElementById("log");
+    const stateEl = document.getElementById("state");
+    const client = connectMqtt(mqtt, DEFAULT_MQTT_WS_PATH);
+    let qos = 0;
+
+    wireMqttState(client, stateEl, {
+      onConnect() {
+        appendLog(logEl, "[connected] ready to publish");
+      },
+    });
+
+    document.querySelectorAll("#qosGroup button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        qos = Number(btn.dataset.qos);
+        document.querySelectorAll("#qosGroup button").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    document.getElementById("publishBtn").addEventListener("click", () => {
+      const topic = document.getElementById("topic").value.trim();
+      const retain = document.getElementById("retain").checked;
+      const payload = JSON.stringify({
+        note: "qos-retain lab",
+        qos,
+        retain,
+        ts: Date.now(),
+      });
+      client.publish(topic, payload, { qos, retain }, (err) => {
+        if (err) {
+          appendLog(logEl, "[error] " + (err.message || String(err)));
+          return;
+        }
+        appendLog(
+          logEl,
+          `[published] ${topic} qos=${qos} retain=${retain} @ ${new Date().toLocaleTimeString()}`,
+        );
+      });
+    });
+  </script>
+</body>
+</html>

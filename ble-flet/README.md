@@ -10,17 +10,17 @@ Uses **bleak** (WinRT / BlueZ / CoreBluetooth) instead of browser Web Bluetooth,
 - TESAIoT firmware with **BLE module profile** enabled + reboot
 - No other BLE central connected (nRF Connect, etc.)
 
-## Setup
+## Setup (optional)
+
+`run.bat` / `run.sh` create `.venv` and install deps on first run. Manual setup:
 
 ```bash
 cd TESAIoT_Hackathon/ble-flet
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r requirements.txt
+# Windows (cmd): .venv\Scripts\activate
+# Git Bash / macOS / Linux: use run.sh (prefer) — do not rely on `python` after activate in Git Bash
+./.venv/Scripts/python.exe -m pip install -r requirements.txt   # Windows
+# .venv/bin/python -m pip install -r requirements.txt           # macOS / Linux
 ```
 
 ## Verify firmware EVT rate
@@ -28,22 +28,36 @@ pip install -r requirements.txt
 Confirm SENSOR_CFG matches on-wire EVT cadence (no UI):
 
 ```bash
-python scripts/verify_firmware_evt_rate.py
-python scripts/verify_firmware_evt_rate.py --apply-1hz --duration 45
+./.venv/Scripts/python.exe scripts/verify_firmware_evt_rate.py
+./.venv/Scripts/python.exe scripts/verify_firmware_evt_rate.py --apply-1hz --duration 45
 ```
 
 Exit **0** = pass; **3** = rate mismatch. Uses device `counter` + `deviceMs` on **parsed EVT_SENSOR** frames (not wall-clock notify bursts). Report columns: `unique` = deduped counters; `raw_notify` = parseable EVT before dedup; `decode_fail` = mask/payload decode errors.
 
 ## Run
 
-```bash
-python main.py
+**Windows (cmd / Explorer):**
+
+```bat
+run.bat
 ```
 
-Or with Flet CLI (hot reload during UI work):
+**Git Bash / macOS / Linux:**
 
 ```bash
-flet run main.py
+./run.sh
+```
+
+Or call the venv interpreter directly (avoids Git Bash `python` aliases):
+
+```bash
+./.venv/Scripts/python.exe main.py
+```
+
+Hot reload during UI work (after venv is ready):
+
+```bash
+./.venv/Scripts/python.exe -m flet run main.py
 ```
 
 ## Workflow

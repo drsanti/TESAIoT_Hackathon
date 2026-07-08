@@ -346,19 +346,28 @@ async def run(args: argparse.Namespace) -> int:
             echoed = await session.set_bmi270_mode(mode_code)
             print(f"BMI270_MODE_SET -> {BMI270_MODE_NAMES.get(echoed, echoed)}")
 
-        print("\nSENSOR_CFG:")
-        cfgs = session.state.sensor_cfg
+        # Snapshot expected cfg *before* streaming. Under EVT flood a GET can
+        # time out; session.refresh now merges, but evaluate must not depend on
+        # a partial post-stream map wiping SET echoes.
+        cfgs = dict(session.state.sensor_cfg)
+
+        print("\nSENSOR_CFG (pre-stream):")
         for key in SENSOR_ORDER:
             if args.sensor and key != args.sensor:
                 continue
             print(f"  {SENSOR_LABELS[key]:8} {cfg_one_line(cfgs.get(key))}")
 
-        print("\nEnabling BLE stream (policy 0x07)...")
-        await session.enable_streaming()
+        missing_pre = [k for k in SENSOR_ORDER if (not args.sensor or k == args.sensor) and k not in cfgs]
+        if missing_pre:
+            print(f"Warning: missing SENSOR_CFG before stream: {', '.join(missing_pre)}")
 
-        cfgs = session.state.sensor_cfg
+        print("\nEnabling BLE stream (policy 0x07)...")
+        await session.enable_streaming(refresh_cfg=len(cfgs) < 4)
+        # Keep any newly fetched rows; never drop pre-stream baselines.
+        for key, cfg in session.state.sensor_cfg.items():
+            cfgs[key] = cfg
         if len(cfgs) < 4:
-            print(f"Warning: SENSOR_CFG loaded {len(cfgs)}/4 after stream on")
+            print(f"Warning: SENSOR_CFG known {len(cfgs)}/4 after stream on")
 
         if args.warmup > 0:
             print(f"Warmup {args.warmup:.0f}s...")
@@ -383,15 +392,31 @@ async def run(args: argparse.Namespace) -> int:
         wall_s = asyncio.get_event_loop().time() - t0
 
         session._samples_muted = True
-        await asyncio.sleep(0.2)
+        try:
+            await session.set_ble_policy(BLE_POLICY_BOOT_DEFAULT)
+            await asyncio.sleep(0.35)
+            await session.refresh_sensor_configs()
+            for key, cfg in session.state.sensor_cfg.items():
+                cfgs[key] = cfg
+        except Exception as exc:
+            print(f"Warning: post-soak quiet refresh skipped ({exc!r})")
 
-        await session.read_link_snapshot()
+        try:
+            await session.read_link_snapshot()
+        except Exception as exc:
+            print(f"Warning: BS_LINK read failed ({exc!r})")
         link = session.state
         drop_delta = link.link_tx_drops - link_start
         print(
             f"BS_LINK final: state={link.link_state} mtu={link.link_mtu} "
             f"tx_drops={link.link_tx_drops} (+{drop_delta} during soak)"
         )
+
+        print("\nSENSOR_CFG (used for rate check):")
+        for key in SENSOR_ORDER:
+            if args.sensor and key != args.sensor:
+                continue
+            print(f"  {SENSOR_LABELS[key]:8} {cfg_one_line(cfgs.get(key))}")
 
         reports: list[VerifyReport] = []
         for key in SENSOR_ORDER:

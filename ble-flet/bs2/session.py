@@ -153,6 +153,8 @@ class Bs2BleSession:
         await self._client.connect()
         self._notify_loop = asyncio.get_running_loop()
         await self._client.start_notify(BS2_BLE_CHAR_BS_TX_UUID, self._on_notify)
+        # WinRT notify path needs a short settle before first REQ/RES round-trip.
+        await asyncio.sleep(0.35)
         self.state.connected = True
         self.state.device_name = device.name or "TESAIoT"
         self.state.device_address = device.address
@@ -182,14 +184,27 @@ class Bs2BleSession:
         self._emit_state()
         self._log("info", "Disconnected")
 
-    async def ping(self, timeout: float = 6.0) -> None:
-        res = await self._send_req(BS_CMD_PING, b"", timeout=timeout)
-        if res[2] != 0:
-            raise RuntimeError(f"PING failed status={res[2]}")
+    async def ping(self, timeout: float = 6.0, *, attempts: int = 3) -> None:
+        last_exc: Exception | None = None
+        for attempt in range(max(1, attempts)):
+            try:
+                res = await self._send_req(BS_CMD_PING, b"", timeout=timeout)
+                if res[2] != 0:
+                    raise RuntimeError(f"PING failed status={res[2]}")
+                return
+            except Exception as exc:
+                last_exc = exc
+                self._log("warn", f"PING attempt {attempt + 1}/{attempts}: {exc}")
+                await asyncio.sleep(0.25 * (attempt + 1))
+        assert last_exc is not None
+        raise last_exc
 
-    async def enable_streaming(self) -> None:
+    async def enable_streaming(self, *, refresh_cfg: bool = True) -> None:
         self._samples_muted = True
-        await self.refresh_sensor_configs()
+        if refresh_cfg or len(self.state.sensor_cfg) < 4:
+            await self.refresh_sensor_configs()
+        if self._client is None or not self._client.is_connected:
+            raise RuntimeError("connection dropped before BLE_POLICY_SET")
         flags = await self.set_ble_policy(BLE_POLICY_FACTORY_STREAMING)
         self._samples_muted = len(self.state.sensor_cfg) == 0
         self.state.streaming = not self._samples_muted
@@ -199,40 +214,89 @@ class Bs2BleSession:
             f"Stream on — policy 0x{flags:02x}, SENSOR_CFG {len(self.state.sensor_cfg)}/4",
         )
 
-    async def set_ble_policy(self, flags: int, timeout: float = 8.0) -> int:
-        res = await self._send_req(
-            BS_CMD_BLE_POLICY_SET,
-            bytes((flags & 0x3F,)),
-            timeout=timeout,
-        )
-        if res[2] != 0:
-            raise RuntimeError(f"BLE_POLICY_SET status={res[2]}")
-        echoed = res[3][0] if res[3] else flags
-        self.state.policy_flags = echoed & 0x3F
-        self._emit_state()
-        return self.state.policy_flags
-
-    async def refresh_sensor_configs(self) -> dict[str, dict]:
-        loaded: dict[str, dict] = {}
-        for key, sid in SENSOR_ID_TO_NUM.items():
+    async def set_ble_policy(self, flags: int, timeout: float = 8.0, *, attempts: int = 3) -> int:
+        want = flags & 0x3F
+        if self.state.policy_flags == want and self.connected:
+            return want
+        last_exc: Exception | None = None
+        for attempt in range(max(1, attempts)):
             try:
                 res = await self._send_req(
-                    BS_CMD_SENSOR_CFG_GET,
-                    bytes((sid,)),
-                    timeout=8.0,
+                    BS_CMD_BLE_POLICY_SET,
+                    bytes((want,)),
+                    timeout=timeout,
                 )
                 if res[2] != 0:
-                    self._log("error", f"SENSOR_CFG_GET {key} status={res[2]}")
-                    continue
-                cfg = decode_sensor_cfg_body(res[3])
-                if cfg is None:
-                    continue
-                loaded[key] = cfg
+                    raise RuntimeError(f"BLE_POLICY_SET status={res[2]}")
+                echoed = res[3][0] if res[3] else want
+                self.state.policy_flags = echoed & 0x3F
+                self._emit_state()
+                return self.state.policy_flags
             except Exception as exc:
-                self._log("error", f"SENSOR_CFG_GET {key}: {exc}")
-        self.state.sensor_cfg = loaded
+                last_exc = exc
+                self._log("warn", f"BLE_POLICY_SET attempt {attempt + 1}/{attempts}: {exc}")
+                await asyncio.sleep(0.25 * (attempt + 1))
+        assert last_exc is not None
+        raise last_exc
+
+    async def refresh_sensor_configs(self, *, attempts: int = 3) -> dict[str, dict]:
+        """Pull SENSOR_CFG for all sensors.
+
+        Merges successful GETs into the existing map so a single timeout / status
+        under BLE load does not wipe a previously verified row (SET echo or prior GET).
+        Retries missing keys with a short quiet gap.
+        """
+        merged = dict(self.state.sensor_cfg)
+        pending = list(SENSOR_ID_TO_NUM.items())
+        for attempt in range(max(1, attempts)):
+            if not pending:
+                break
+            if attempt > 0:
+                await asyncio.sleep(0.15 * attempt)
+            still: list[tuple[str, int]] = []
+            for key, sid in pending:
+                try:
+                    res = await self._send_req(
+                        BS_CMD_SENSOR_CFG_GET,
+                        bytes((sid,)),
+                        timeout=8.0,
+                    )
+                    if res[2] != 0:
+                        self._log(
+                            "error",
+                            f"SENSOR_CFG_GET {key} status={res[2]} (attempt {attempt + 1})",
+                        )
+                        still.append((key, sid))
+                        continue
+                    cfg = decode_sensor_cfg_body(res[3])
+                    if cfg is None:
+                        self._log(
+                            "error",
+                            f"SENSOR_CFG_GET {key} decode failed (attempt {attempt + 1})",
+                        )
+                        still.append((key, sid))
+                        continue
+                    merged[key] = cfg
+                except Exception as exc:
+                    self._log("error", f"SENSOR_CFG_GET {key}: {exc}")
+                    still.append((key, sid))
+            pending = still
+        if pending:
+            kept = [k for k, _ in pending if k in merged]
+            dropped = [k for k, _ in pending if k not in merged]
+            if kept:
+                self._log(
+                    "warn",
+                    f"SENSOR_CFG_GET retry exhausted; kept prior cfg for: {', '.join(kept)}",
+                )
+            if dropped:
+                self._log(
+                    "error",
+                    f"SENSOR_CFG_GET failed with no prior cfg: {', '.join(dropped)}",
+                )
+        self.state.sensor_cfg = merged
         self._emit_state()
-        return loaded
+        return merged
 
     async def set_sensor_cfg(self, cfg: dict, timeout: float = 8.0) -> dict:
         res = await self._send_req(
@@ -268,18 +332,25 @@ class Bs2BleSession:
         """Write 1 Hz sampling + publish for all sensors (RAM until reboot)."""
         was_streaming = self.state.streaming
         self._samples_muted = True
-        await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT)
+        # Quiet bootstrap already set boot policy; only re-assert if different.
+        if self.state.policy_flags != BLE_POLICY_BOOT_DEFAULT:
+            await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT)
+            await asyncio.sleep(0.2)
         for cfg in LAB_1HZ_SENSOR_CFGS:
             key = NUM_TO_SENSOR_ID[cfg["sensor_id"]]
             try:
                 await self.set_sensor_cfg(cfg)
-                await asyncio.sleep(0.12)
+                await asyncio.sleep(0.2)
                 self._log("info", f"SENSOR_CFG_SET {key} -> 1 Hz")
             except Exception as exc:
                 self._log("error", f"SENSOR_CFG_SET {key}: {exc}")
+        await asyncio.sleep(0.25)
         await self.refresh_sensor_configs()
+        missing = [k for k in SENSOR_IDS if k not in self.state.sensor_cfg]
+        if missing:
+            self._log("warn", f"Apply 1 Hz incomplete cfg: {', '.join(missing)}")
         if was_streaming:
-            await self.enable_streaming()
+            await self.enable_streaming(refresh_cfg=False)
         else:
             self._samples_muted = False
 
@@ -324,10 +395,13 @@ class Bs2BleSession:
 
     async def _quiet_bootstrap(self) -> None:
         await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT)
-        await asyncio.sleep(0.15)
-        await self.ping()
+        await asyncio.sleep(0.2)
+        await self.ping(attempts=3)
         await self.refresh_sensor_configs()
-        await self.read_link_snapshot()
+        try:
+            await self.read_link_snapshot()
+        except Exception as exc:
+            self._log("warn", f"BS_LINK read skipped: {exc}")
         self._log("info", "Quiet bootstrap: PING + SENSOR_CFG + BS_LINK")
 
     async def _send_req(self, cmd_id: int, body: bytes, timeout: float = 8.0) -> tuple[int, int, int, bytes]:
@@ -344,8 +418,9 @@ class Bs2BleSession:
             wire = encode_bs_req(req_id, cmd_id, body)
             try:
                 await self._client.write_gatt_char(BS2_BLE_CHAR_BS_RX_UUID, wire, response=False)
-                res = await asyncio.wait_for(fut, timeout=timeout)
-                return res
+                # Small yield so WinRT notify callbacks can drain into the loop.
+                await asyncio.sleep(0)
+                return await asyncio.wait_for(fut, timeout=timeout)
             finally:
                 self._pending.pop(req_id, None)
 

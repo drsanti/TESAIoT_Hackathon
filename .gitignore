@@ -2,8 +2,7 @@
 Thumbs.db
 *.log
 
-# Optional offline SDK copy (see web-app/index.html)
-web-app/vendor/
+# vendor/live-data.js is tracked for npx serve offline demos (refresh via sync-hackathon-live-data-vendor.sh)
 
 # Local editor / tooling
 .idea/

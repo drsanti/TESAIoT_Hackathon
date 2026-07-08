@@ -3,14 +3,35 @@
  * ex01 remains self-contained; import this module from sibling HTML pages.
  */
 
-/** Load TelemetryClient + catalog from VSIX /@bitstream/ SDK (Serve Web App Folder). */
+/** Import URLs tried in order (VSIX serve → legacy alias → bundled vendor copy). */
+const SDK_IMPORT_CANDIDATES = [
+  '/@bitstream/ws-live-data.js',
+  '/sdk/live-data.js',
+  new URL('../vendor/live-data.js', import.meta.url).href,
+];
+
+/** Load TelemetryClient + catalog from VSIX SDK or local vendor fallback. */
 export async function loadSdk() {
-  const mod = await import('/@bitstream/ws-live-data.js');
-  return {
-    TelemetryClient: mod.TelemetryClient,
-    catalogEntry: mod.catalogEntry,
-    SENSOR_CATALOG: mod.SENSOR_CATALOG,
-  };
+  let lastErr;
+  for (const url of SDK_IMPORT_CANDIDATES) {
+    try {
+      const mod = await import(/* @vite-ignore */ url);
+      if (mod.TelemetryClient) {
+        return {
+          TelemetryClient: mod.TelemetryClient,
+          catalogEntry: mod.catalogEntry,
+          SENSOR_CATALOG: mod.SENSOR_CATALOG,
+        };
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  const hint =
+    'Live-data SDK not found. Use Bitstream Studio → "Serve Web App Folder over HTTP", or copy packages/live-data/dist/live-data.browser.js to web-app/vendor/live-data.js.';
+  const err = new Error(hint);
+  err.cause = lastErr;
+  throw err;
 }
 
 /** Map a value to 0–100% using catalog field min/max. */

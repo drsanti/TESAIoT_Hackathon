@@ -13,9 +13,10 @@ Use this repo to install **Bitstream Studio**, flash your **TESAIoT PSoC Edge De
 | [`vsix/`](vsix/) | Bitstream Studio extension — install in VS Code or Cursor |
 | [`hex/`](hex/) | DevKit firmware — flash before hardware labs |
 | [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
-| [`web-app/`](web-app/) | Sample HTML pages that show live sensor readings |
+| [`web-app/`](web-app/) | Telemetry provider HTML examples (ex01–ex08) |
+| [`ble-flet/`](ble-flet/) | **Desktop BLE dashboard** (Python Flet + bleak) |
 
-**Tip:** Use the **same version number** for the VSIX and firmware when you can (for example `0.1.5` for both). Check [`hex/firmware-manifest.json`](hex/firmware-manifest.json) for available firmware builds and notes.
+**Tip:** Use the **same version number** for the VSIX and firmware when you can (for example `0.1.6` for both). Check [`hex/firmware-manifest.json`](hex/firmware-manifest.json) for available firmware builds and notes.
 
 ---
 
@@ -55,7 +56,7 @@ More detail: [`vsix/README.md`](vsix/README.md)
 **Optional — install from the terminal** (from the repo folder; change the version if needed):
 
 ```bash
-code --install-extension vsix/bitstream-studio-0.1.5.vsix
+code --install-extension vsix/bitstream-studio-0.1.6.vsix
 code -r
 ```
 
@@ -103,6 +104,19 @@ The [`web-app/`](web-app/) folder has simple HTML pages that display **live sens
 5. Choose an example from the list.
 
 Open [`web-app/index.html`](web-app/index.html) in the served site for a full catalog and short instructions.
+
+### Desktop BLE (Flet)
+
+For **direct BLE to the DevKit** (no browser Web Bluetooth), use the Flet app in [`ble-flet/`](ble-flet/):
+
+```bash
+cd ble-flet
+python -m venv .venv && .venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+python main.py
+```
+
+See [`ble-flet/README.md`](ble-flet/README.md) for scan → connect → stream workflow.
 
 ### Examples
 

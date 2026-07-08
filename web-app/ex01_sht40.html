@@ -62,9 +62,9 @@
   </div>
 
   <script type="module">
-    // VSIX-shipped @bitstream SDK — available when served by Bitstream Studio
-    // ("Serve Web App Folder over HTTP").
-    const { TelemetryClient, catalogEntry } = await import('/@bitstream/ws-live-data.js');
+    import { loadSdk, pct } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
 
     const $ = (id) => document.getElementById(id);
     const stateEl = $('state'), routeEl = $('route');
@@ -81,10 +81,6 @@
 
     const tempHist = [], humHist = [], MAX = 120;
     let staleTimer = null;
-
-    function pct(v, def) {
-      return Math.max(0, Math.min(100, ((v - def.min) / (def.max - def.min)) * 100));
-    }
 
     function drawSeries(series, color, min, max) {
       if (series.length < 2) return;

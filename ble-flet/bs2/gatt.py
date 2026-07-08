@@ -10,3 +10,10 @@ BS2_BLE_ADV_NAME_PREFIX = "TESAIoT-"
 
 def matches_bs2_ble_name(local_name: str | None) -> bool:
     return isinstance(local_name, str) and local_name.startswith(BS2_BLE_ADV_NAME_PREFIX)
+
+
+def device_identity_key(*, name: str | None, address: str) -> str:
+    """Stable pick key across BLE random address rotation (prefer adv name)."""
+    if matches_bs2_ble_name(name):
+        return name or address
+    return address

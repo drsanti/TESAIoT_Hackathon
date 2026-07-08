@@ -225,48 +225,22 @@ def encode_sensor_cfg_body(cfg: dict) -> bytes:
     return bytes(body)
 
 
-LAB_1HZ_SENSOR_CFGS: list[dict] = [
-    {
-        "sensor_id": 0,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": 0x1F,
-        "sampling_interval_ms": 1000,
-        "publish_interval_ms": 1000,
-        "delta_x100": 0,
-        "min_publish_interval_ms": 0,
-    },
-    {
-        "sensor_id": 1,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": 0x03,
-        "sampling_interval_ms": 1000,
-        "publish_interval_ms": 0,
-        "delta_x100": 10,
-        "min_publish_interval_ms": 50,
-    },
-    {
-        "sensor_id": 2,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": 0x03,
-        "sampling_interval_ms": 1000,
-        "publish_interval_ms": 0,
-        "delta_x100": 10,
-        "min_publish_interval_ms": 50,
-    },
-    {
-        "sensor_id": 3,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": 0x03,
-        "sampling_interval_ms": 1000,
-        "publish_interval_ms": 0,
-        "delta_x100": 10,
-        "min_publish_interval_ms": 50,
-    },
-]
+# Back-compat alias — Lab Quiet scene (1 Hz periodic all sensors).
+from .scene_presets import get_scene_preset, scene_preset_sensor_cfgs  # noqa: E402
+
+LAB_1HZ_SENSOR_CFGS: list[dict] = scene_preset_sensor_cfgs(get_scene_preset("labQuiet"))
+
+
+def expected_cfg_hz(cfg: dict | None) -> float | None:
+    """Expected periodic EVT rate from SENSOR_CFG, or None for off / on_change."""
+    if not cfg or not cfg.get("enabled") or cfg.get("mask", 0) == 0:
+        return None
+    if int(cfg.get("publish_mode", 0)) == 1:
+        return None
+    ms = evt_cadence_interval_ms(cfg)
+    if ms <= 0:
+        return None
+    return 1000.0 / ms
 
 
 def format_configured_rate(cfg: dict | None) -> str:
@@ -295,3 +269,28 @@ def format_measured_rate(hz: float | None) -> str | None:
     if hz is None or hz <= 0:
         return None
     return f"~{round(hz)} Hz" if hz >= 10 else f"~{hz:.1f} Hz"
+
+
+def rate_match_label(
+    measured_hz: float | None,
+    expected_hz: float | None,
+    *,
+    publish_mode: int = 0,
+    tolerance: float = 0.25,
+) -> str:
+    """Compare measured deliver Hz to SENSOR_CFG expected cadence.
+
+    - periodic (0): measured within ±tolerance of expected
+    - on_change (1): not rate-checked (caller usually passes expected=None → n/a)
+    - hybrid (2): expected is a *floor* (≥); OK when measured >= expected*(1-tolerance)
+    """
+    if expected_hz is None:
+        return "n/a"
+    if measured_hz is None or measured_hz <= 0:
+        return "…"
+    if publish_mode == 2:
+        floor = expected_hz * (1.0 - tolerance)
+        return "OK" if measured_hz >= floor else "MISMATCH"
+    lo = expected_hz * (1.0 - tolerance)
+    hi = expected_hz * (1.0 + tolerance)
+    return "OK" if lo <= measured_hz <= hi else "MISMATCH"

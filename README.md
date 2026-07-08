@@ -116,7 +116,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-See [`ble-flet/README.md`](ble-flet/README.md) for scan → connect → stream workflow.
+See [`ble-flet/README.md`](ble-flet/README.md) for scan → connect → stream workflow. **Rate stats:** trust **`meas`** (counter ÷ MCU `deviceMs`) vs **`cfg`**; card badge `#NNN` is the live EVT counter. **Rate stats:** trust **`meas`** (counter ÷ MCU `deviceMs`) vs **`cfg`**; card `#NNN` is the live EVT counter — not the session `evt total`.
 
 ### Examples
 

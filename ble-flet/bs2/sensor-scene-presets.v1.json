@@ -1,0 +1,298 @@
+{
+  "schemaVersion": 1,
+  "fletV1Ids": [
+    "motion",
+    "realtime",
+    "labQuiet"
+  ],
+  "presets": {
+    "motion": {
+      "id": "motion",
+      "label": "Motion",
+      "summary": "Orientation / twin tracking — predictable BLE rates",
+      "useCases": [
+        "Digital twin pose",
+        "Move-the-board demos",
+        "Robot arm orientation over BLE"
+      ],
+      "streamPolicy": 0,
+      "recommendedBleTelem": "normal",
+      "statusLine": "Motion · ~20 Hz IMU · env 1 Hz",
+      "bmi270": {
+        "streamMode": 1,
+        "streamModeName": "fusion",
+        "fusionFeedIntervalMs": 20,
+        "sensorCfg": {
+          "sensorId": 0,
+          "enabled": true,
+          "publishMode": 0,
+          "mask": 31,
+          "samplingIntervalMs": 50,
+          "publishIntervalMs": 50,
+          "deltaX100": 0,
+          "minPublishIntervalMs": 0
+        }
+      },
+      "bmm350": {
+        "sensorId": 1,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 100,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "sht40": {
+        "sensorId": 2,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "dps368": {
+        "sensorId": 3,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      }
+    },
+    "realtime": {
+      "id": "realtime",
+      "label": "Realtime",
+      "summary": "Responsive IMU + mag (Both); env stays calm at 1 Hz",
+      "useCases": [
+        "Gesture / tap teaching",
+        "Live IMU wow panels",
+        "Spike-catch on motion sensors"
+      ],
+      "streamPolicy": 0,
+      "recommendedBleTelem": "normal",
+      "statusLine": "Realtime · ~25 Hz motion+ · env 1 Hz",
+      "bmi270": {
+        "streamMode": 2,
+        "streamModeName": "hybrid",
+        "fusionFeedIntervalMs": 20,
+        "sensorCfg": {
+          "sensorId": 0,
+          "enabled": true,
+          "publishMode": 2,
+          "mask": 31,
+          "samplingIntervalMs": 40,
+          "publishIntervalMs": 40,
+          "deltaX100": 0,
+          "minPublishIntervalMs": 0
+        }
+      },
+      "bmm350": {
+        "sensorId": 1,
+        "enabled": true,
+        "publishMode": 2,
+        "mask": 3,
+        "samplingIntervalMs": 100,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "sht40": {
+        "sensorId": 2,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "dps368": {
+        "sensorId": 3,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      }
+    },
+    "labQuiet": {
+      "id": "labQuiet",
+      "label": "Lab Quiet",
+      "summary": "~1 update/sec — teach, verify, calm BLE",
+      "useCases": [
+        "Classroom rate checks",
+        "Web demos needing a calm stream",
+        "Replace legacy Apply 1 Hz"
+      ],
+      "streamPolicy": 0,
+      "recommendedBleTelem": "normal",
+      "statusLine": "Lab Quiet · ~1 Hz all sensors",
+      "bmi270": {
+        "streamMode": 2,
+        "streamModeName": "hybrid",
+        "fusionFeedIntervalMs": 20,
+        "sensorCfg": {
+          "sensorId": 0,
+          "enabled": true,
+          "publishMode": 0,
+          "mask": 31,
+          "samplingIntervalMs": 1000,
+          "publishIntervalMs": 1000,
+          "deltaX100": 0,
+          "minPublishIntervalMs": 0
+        }
+      },
+      "bmm350": {
+        "sensorId": 1,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "sht40": {
+        "sensorId": 2,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "dps368": {
+        "sensorId": 3,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      }
+    },
+    "environment": {
+      "id": "environment",
+      "label": "Environment",
+      "summary": "Climate only — IMU/mag off",
+      "useCases": [
+        "Weather / comfort cards",
+        "Long-running ambient display"
+      ],
+      "streamPolicy": 0,
+      "recommendedBleTelem": "normal",
+      "statusLine": "Environment · SHT+DPS 1 Hz · IMU off",
+      "bmi270": {
+        "streamMode": 1,
+        "streamModeName": "fusion",
+        "fusionFeedIntervalMs": 20,
+        "sensorCfg": {
+          "sensorId": 0,
+          "enabled": false,
+          "publishMode": 0,
+          "mask": 31,
+          "samplingIntervalMs": 1000,
+          "publishIntervalMs": 1000,
+          "deltaX100": 0,
+          "minPublishIntervalMs": 0
+        }
+      },
+      "bmm350": {
+        "sensorId": 1,
+        "enabled": false,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "sht40": {
+        "sensorId": 2,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "dps368": {
+        "sensorId": 3,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      }
+    },
+    "batteryWalkaround": {
+      "id": "batteryWalkaround",
+      "label": "Battery Walkaround",
+      "summary": "Low airtime walkaround; prefer BLE Idle when available",
+      "useCases": [
+        "Phone-in-pocket twin",
+        "Slow keepalive orientation"
+      ],
+      "streamPolicy": 0,
+      "recommendedBleTelem": "idle",
+      "statusLine": "Battery · ~5 Hz fusion · env ≤1 Hz",
+      "bmi270": {
+        "streamMode": 1,
+        "streamModeName": "fusion",
+        "fusionFeedIntervalMs": 20,
+        "sensorCfg": {
+          "sensorId": 0,
+          "enabled": true,
+          "publishMode": 0,
+          "mask": 31,
+          "samplingIntervalMs": 200,
+          "publishIntervalMs": 200,
+          "deltaX100": 0,
+          "minPublishIntervalMs": 0
+        }
+      },
+      "bmm350": {
+        "sensorId": 1,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 500,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "sht40": {
+        "sensorId": 2,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      },
+      "dps368": {
+        "sensorId": 3,
+        "enabled": true,
+        "publishMode": 0,
+        "mask": 3,
+        "samplingIntervalMs": 1000,
+        "publishIntervalMs": 0,
+        "deltaX100": 10,
+        "minPublishIntervalMs": 50
+      }
+    }
+  }
+}

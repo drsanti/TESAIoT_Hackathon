@@ -14,11 +14,11 @@ Desktop app to **flash firmware** onto the **TESAIoT PSoC Edge DevKit** over USB
 
 | File | Use on |
 |------|--------|
-| `TESAIoT.Flasher.Setup.0.1.5.exe` | **Windows** 10/11 (64-bit) |
-| `TESAIoT.Flasher-0.1.5-arm64.dmg` | **macOS** on Apple Silicon (M1/M2/M3) |
-| `TESAIoT.Flasher-0.1.5.dmg` | **macOS** on Intel Macs |
-| `TESAIoT.Flasher-0.1.5.AppImage` | **Linux** 64-bit (Ubuntu, Fedora, etc.) — no install step |
-| `tesaiot-flasher_0.1.5_amd64.deb` | **Linux** 64-bit (Debian, Ubuntu, Mint, …) |
+| `TESAIoT.Flasher.Setup.0.1.6.exe` | **Windows** 10/11 (64-bit) |
+| `TESAIoT.Flasher-0.1.6-arm64.dmg` | **macOS** on Apple Silicon (M1/M2/M3) |
+| `TESAIoT.Flasher-0.1.6.dmg` | **macOS** on Intel Macs |
+| `TESAIoT.Flasher-0.1.6.AppImage` | **Linux** 64-bit (Ubuntu, Fedora, etc.) — no install step |
+| `tesaiot-flasher_0.1.6_amd64.deb` | **Linux** 64-bit (Debian, Ubuntu, Mint, …) |
 
 **Not sure which Mac file?** Try the **arm64** DMG first on Apple Silicon. On Intel Macs, use the other DMG.
 
@@ -28,7 +28,7 @@ Desktop app to **flash firmware** onto the **TESAIoT PSoC Edge DevKit** over USB
 
 ### Windows
 
-1. Double-click **`TESAIoT.Flasher.Setup.0.1.5.exe`**.
+1. Double-click **`TESAIoT.Flasher.Setup.0.1.6.exe`**.
 2. Follow the setup wizard (you can change the install folder).
 3. Launch **TESAIoT Flasher** from the Start menu or desktop shortcut.
 
@@ -44,13 +44,13 @@ If KitProg3 is not detected, open the app and use **Install Driver**, then replu
 
 **`.deb` (Debian / Ubuntu / Mint)**
 
-1. Install: `sudo apt install ./tesaiot-flasher_0.1.5_amd64.deb` (or double-click the file in your file manager).
+1. Install: `sudo apt install ./tesaiot-flasher_0.1.6_amd64.deb` (or double-click the file in your file manager).
 2. Launch **TESAIoT Flasher** from the app menu.
 
 **`.AppImage` (portable)**
 
-1. Make it executable: `chmod +x TESAIoT.Flasher-0.1.5.AppImage`
-2. Run: `./TESAIoT.Flasher-0.1.5.AppImage`
+1. Make it executable: `chmod +x TESAIoT.Flasher-0.1.6.AppImage`
+2. Run: `./TESAIoT.Flasher-0.1.6.AppImage`
 
 If the AppImage will not start, install **FUSE** support for your distro (e.g. `libfuse2` on Ubuntu 22.04).
 

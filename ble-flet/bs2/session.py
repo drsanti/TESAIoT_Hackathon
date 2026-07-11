@@ -12,6 +12,7 @@ from typing import Any
 
 from bleak import BleakClient, BleakScanner
 from bleak.backends.device import BLEDevice
+from bleak.exc import BleakDeviceNotFoundError
 
 from .chunk import BS2_BLE_CHUNK_VER, Bs2BleChunkReassembler
 from .decode import (
@@ -28,6 +29,7 @@ from .gatt import (
     BS2_BLE_CHAR_BS_LINK_UUID,
     BS2_BLE_CHAR_BS_RX_UUID,
     BS2_BLE_CHAR_BS_TX_UUID,
+    BS2_BLE_SERVICE_UUID,
     matches_bs2_ble_name,
 )
 from .scene_presets import (
@@ -274,39 +276,55 @@ class Bs2BleSession:
         ranked = await self.scan_ranked(timeout=timeout)
         return [device for device, _rssi in ranked]
 
-    async def scan_ranked(self, timeout: float = 8.0) -> list[tuple[BLEDevice, int]]:
-        """Return TESAIoT peripherals as (device, rssi) sorted best RSSI first."""
-        found: list[tuple[BLEDevice, int]] = []
-        seen: set[str] = set()
-
-        try:
-            discovered = await BleakScanner.discover(timeout=timeout, return_adv=True)
-        except TypeError:
-            discovered = await BleakScanner.discover(timeout=timeout)
-
-        if isinstance(discovered, dict):
-            entries = discovered.values()
+    def _tesaiot_adv_match(self, device: BLEDevice, adv: Any) -> bool:
+        name = ""
+        rssi = -999
+        service_uuids: list[str] = []
+        if adv is not None:
+            name = adv.local_name or device.name or ""
+            rssi = int(getattr(adv, "rssi", None) or -999)
+            service_uuids = list(getattr(adv, "service_uuids", None) or [])
         else:
-            entries = ((device, None) for device in discovered)
+            name = device.name or ""
+        if matches_bs2_ble_name(name):
+            return True
+        target = BS2_BLE_SERVICE_UUID.lower()
+        return any(str(u).lower() == target for u in service_uuids)
 
-        for device, adv in entries:
-            name = ""
+    async def scan_ranked(self, timeout: float = 12.0) -> list[tuple[BLEDevice, int]]:
+        """Return TESAIoT peripherals as (device, rssi) sorted best RSSI first."""
+        found: dict[str, tuple[BLEDevice, int]] = {}
+        raw_ble = 0
+
+        def on_detect(device: BLEDevice, adv: Any) -> None:
+            nonlocal raw_ble
+            raw_ble += 1
+            if not self._tesaiot_adv_match(device, adv):
+                return
             rssi = -999
             if adv is not None:
-                name = adv.local_name or device.name or ""
                 rssi = int(getattr(adv, "rssi", None) or -999)
-            else:
-                name = device.name or ""
-            if not matches_bs2_ble_name(name):
-                continue
-            if device.address in seen:
-                continue
-            seen.add(device.address)
-            found.append((device, rssi))
+            prev = found.get(device.address)
+            if prev is None or rssi > prev[1]:
+                found[device.address] = (device, rssi)
 
-        found.sort(key=lambda item: item[1], reverse=True)
-        self._log("info", f"Scan: {len(found)} TESAIoT peripheral(s)")
-        return found
+        scanner = BleakScanner(detection_callback=on_detect)
+        await scanner.start()
+        try:
+            await asyncio.sleep(timeout)
+        finally:
+            await scanner.stop()
+
+        ranked = sorted(found.values(), key=lambda item: item[1], reverse=True)
+        if ranked:
+            self._log("info", f"Scan: {len(ranked)} TESAIoT peripheral(s) ({raw_ble} BLE adverts)")
+        else:
+            self._log(
+                "info",
+                f"Scan: 0 TESAIoT peripheral(s) ({raw_ble} BLE adverts) — "
+                "if board was up >60s, firmware may need ADV restart fix (reboot or reflash)",
+            )
+        return ranked
 
     @property
     def connected(self) -> bool:
@@ -316,8 +334,44 @@ class Bs2BleSession:
         await self.disconnect()
         self._device = device
         self._user_disconnect = False
-        self._client = BleakClient(device, disconnected_callback=self._on_ble_disconnected)
-        await self._client.connect()
+
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                self._client = BleakClient(
+                    device,
+                    disconnected_callback=self._on_ble_disconnected,
+                    winrt={"use_cached_services": False},
+                )
+                await self._client.connect()
+                last_exc = None
+                break
+            except (OSError, asyncio.TimeoutError, BleakDeviceNotFoundError) as exc:
+                last_exc = exc
+                self._log("warn", f"Connect attempt {attempt + 1}/3 failed: {exc!r}")
+                if self._client is not None:
+                    try:
+                        await self._client.disconnect()
+                    except Exception:
+                        pass
+                    self._client = None
+                if attempt < 2:
+                    await asyncio.sleep(1.0)
+            except Exception as exc:
+                last_exc = exc
+                self._log("warn", f"Connect attempt {attempt + 1}/3 failed: {exc!r}")
+                if self._client is not None:
+                    try:
+                        await self._client.disconnect()
+                    except Exception:
+                        pass
+                    self._client = None
+                if attempt < 2:
+                    await asyncio.sleep(1.0)
+
+        if last_exc is not None or self._client is None:
+            raise last_exc or RuntimeError("connect failed")
+
         self._notify_loop = asyncio.get_running_loop()
         await self._client.start_notify(BS2_BLE_CHAR_BS_TX_UUID, self._on_notify)
         # WinRT notify path needs settle before first REQ/RES round-trip (longer after MCU boot).

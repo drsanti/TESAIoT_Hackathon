@@ -62,7 +62,7 @@ Hot reload during UI work (after venv is ready):
 
 ## Workflow (Auto UX)
 
-**Auto is ON by default.** Launch → hunt `TESAIoT-*` → connect → apply **Motion** scene → Stream on → **Live** tab.
+**Auto is ON by default.** Launch → hunt `TESAIoT-*` → connect → apply **Motion** scene → Stream on → **Live** page.
 
 Same on every successful connect (Auto recover, Scan, or Connect button): **Motion + Stream on** without another click.
 
@@ -71,47 +71,76 @@ Same on every successful connect (Auto recover, Scan, or Connect button): **Moti
 | Launch | Hunt with backoff `2s → 4s → 8s` |
 | Connect (any path) | LINKED → Motion preset → Stream on → LIVE |
 | Unintentional drop / board reboot | Recover grace → hunt → reconnect → Motion + stream |
-| **Disconnect** button | **Park** — Auto off, no hunting until **Resume auto** / Auto toggle |
+| **Park** (Connect page) | Auto off, no hunting until **Resume auto** / Auto toggle |
+| Board up **>60 s** undiscoverable | Firmware high-duty ADV timeout — reflash with ADV auto-restart fix or reboot board |
 | Scene buttons | Motion / Realtime / Lab Quiet — optional override while already LIVE |
 
-Tabs:
+### Sidebar navigation
 
-- **Live** — bar + big-number sensor widgets (BMI270 / BMM350 / SHT40 / DPS368)
-- **Link** — debug text cards + same toolbar tools
-- **Log** — timestamped diagnostics; **Copy log** (snapshot + lines) or **Copy snapshot** for paste into chat
+Collapsible left rail (Codex-style):
 
-Manual tools still work (Scan, Connect, Stream on, PING, BS_LINK, Reset counts) when Auto is off.
+| Route | Content |
+|-------|---------|
+| **Live** | Status hero, layout presets (Grid / Stack / Focus), scene row, sensor cards |
+| **Connect** | Scan, peripheral picker, Park, PING, BS_LINK, debug rows |
+| **Log** | Timestamped log + copy/clear |
+| **Settings** | Layout preset, focus sensor, Auto default, update-on-data, sidebar mode, per-sensor plot defaults |
 
-**Update on data** (toolbar switch, default off): when ON, Live/Link sensor widgets refresh on every accepted EVT; when OFF, paints are throttled (~4 Hz) so Realtime doesn’t thrash Flet.
+- **Expanded** (~220 px): icon + label + device footer
+- **Collapsed** (~56 px): icons only with tooltips
 
-## Sensor cards (Link + Live stats line)
+### Layout presets (app-level)
+
+| Preset | Behavior |
+|--------|----------|
+| **Grid** | 2×2 sensor cards (default) |
+| **Stack** | Single column, full-width cards |
+| **Focus** | One enlarged card + three compact tiles |
+
+### Plot mode (per-card)
+
+Each sensor card header has **Bars | Lines**:
+
+- **Bars** — progress bars + big numbers (original widgets)
+- **Lines** — scrolling `LineChart` (~120 samples, throttled paint)
+
+Modes persist in `~/.tesaiot/ble-flet-prefs.json` (Windows: `%USERPROFILE%\.tesaiot\ble-flet-prefs.json`).
+
+**Update on data** (Settings or Live footer, default off): when ON, widgets refresh on every accepted EVT; when OFF, paints are throttled (~4 Hz).
+
+**Connect** is disabled while Auto is hunting, connecting, or recovering (avoids WinRT races). Manual connect cancels the Auto loop first.
+
+**Stream on** appears in the status hero when linked but policy is not yet `0x07`.
+
+## Sensor cards (stats line)
 
 `frames evt=N  raw=M  cfg ~20 Hz  meas ~20 Hz  [OK]`
 
-- **`#NNN`** (card badge) — latest firmware `EVT_SENSOR` counter for that sensor (+1 per transmitted frame in the current epoch)
-- **evt** — monotonic accepted EVT count (drops WinRT duplicates, stale reorder, and does not double-count when firmware resets `evt_seq` after SENSOR_CFG)
-- **raw** — parseable notifies before counter-dedupe (WinRT may repeat ≈2×)
-- **meas** — publish rate from **counter ÷ MCU `deviceMs`** (authoritative for periodic sensors); not `evt ÷ wall clock`
-- **[OK]** — periodic: `meas` within ±25% of SENSOR_CFG; hybrid: `meas` at least the cfg floor (−25%)
-- **`(evt counter resets=N)`** — firmware recycled `evt_seq` (SENSOR_CFG / stream-policy); normal after preset apply
-
-Toolbar header: `evt total` sums accepted frames across all sensors in the count window.
+- **`#NNN`** (card badge) — latest firmware `EVT_SENSOR` counter
+- **evt** — monotonic accepted EVT count (deduped)
+- **raw** — parseable notifies before dedupe
+- **meas** — publish rate from counter ÷ MCU `deviceMs`
+- **[OK]** — rate within SENSOR_CFG tolerance
+- Live footer: `evt total` sums accepted frames in the count window
 
 ## Layout
 
 | Path | Role |
 |------|------|
-| `main.py` | Flet entry (starts Auto hunt) |
-| `ui/app.py` | Tabs, Auto FSM, toolbar, Log copy |
-| `ui/live_widgets.py` | Live sensor bar widgets |
-| `ui/diag_log.py` | Timestamped log lines + pasteable session snapshot |
-| `bs2/connection_fsm.py` | ConnPhase labels + backoff constants |
-| `bs2/wire.py` | BS2 REQ encode + frame parse |
-| `bs2/chunk.py` | ATT chunk reassembly |
-| `bs2/decode.py` | EVT_SENSOR + SENSOR_CFG decode |
-| `bs2/scene_presets.py` | Load Motion/Realtime/Lab Quiet from JSON |
-| `bs2/sensor-scene-presets.v1.json` | Shared catalog (mirrors host TypeScript) |
-| `bs2/session.py` | Async bleak session (scan ranked, link-lost callback) |
+| `main.py` | Flet entry (theme, min width) |
+| `ui/app.py` | Session controller, routing, Auto FSM |
+| `ui/app_shell.py` | Sidebar + main content shell |
+| `ui/sidebar.py` | Collapsible nav rail |
+| `ui/theme.py` | Dark palette + chip helpers |
+| `ui/preferences.py` | JSON prefs load/save |
+| `ui/status_hero.py` | Phase pill + Stream on CTA |
+| `ui/live_grid.py` | Grid / stack / focus host |
+| `ui/charts.py` | Ring buffers + line charts |
+| `ui/live_widgets.py` | Sensor cards (bars + lines) |
+| `ui/pages/` | Live, Connect, Log, Settings pages |
+| `ui/diag_log.py` | Timestamped log + session snapshot |
+| `bs2/session.py` | Async bleak session (connect retry, WinRT cache off) |
+| `bs2/connection_fsm.py` | ConnPhase labels + backoff |
 
 Wire logic mirrors `packages/bitstream-ble-client/examples/` and `extension/src/bitstream2/`.
 

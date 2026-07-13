@@ -475,44 +475,60 @@ class Bs2BleSession:
         self.state.streaming = tx_evt
         self._emit_state()
 
-    async def enable_streaming(self, *, refresh_cfg: bool = False) -> None:
-        """Enable BLE EVT egress (policy 0x07).
+    def unmute_receive(self) -> None:
+        """Force host EVT delivery on (fallback when POLICY_SET is flaky)."""
+        self._samples_muted = False
+        self.state.streaming = True
+        self._emit_state()
 
-        Policy SET is done *before* optional SENSOR_CFG refresh so a busy / flaky
-        GET path cannot leave TX_EVT off (no live cards despite Stream on).
+    async def enable_streaming(self, *, refresh_cfg: bool = False) -> None:
+        """Enable BLE EVT egress (policy 0x07) and unmute host delivery.
+
+        Unmutes as soon as TX_EVT is known — never waits on SENSOR_CFG GET.
+        If POLICY_SET fails but EVTs are already flowing (or TX_EVT bit set),
+        keep receiving so Auto is not stuck muted in LINKED.
         """
         if self._client is None or not self._client.is_connected:
             raise RuntimeError("not connected")
-        prior_muted = self._samples_muted
-        self._samples_muted = True
+
+        await self._ensure_tx_notify()
+
+        flags = self.state.policy_flags
         try:
             flags = await self.set_ble_policy(
-                BLE_POLICY_FACTORY_STREAMING, timeout=BOOT_REQ_TIMEOUT_S, attempts=4
+                BLE_POLICY_FACTORY_STREAMING,
+                timeout=NORMAL_REQ_TIMEOUT_S,
+                attempts=3,
             )
-        except Exception:
-            if (self.state.policy_flags & 0x02) != 0:
+        except Exception as exc:
+            evt_flowing = sum(self.state.frame_raw.values()) > 0
+            if (self.state.policy_flags & 0x02) != 0 or evt_flowing:
                 self._samples_muted = False
                 self.state.streaming = True
                 self._emit_state()
+                self._log(
+                    "warn",
+                    f"BLE_POLICY_SET incomplete; streaming anyway "
+                    f"(policy=0x{self.state.policy_flags:02x} evt_flowing={evt_flowing}): {exc!r}",
+                )
             else:
-                self._samples_muted = prior_muted
-            raise
-        await self._ensure_tx_notify()
+                raise
+        else:
+            self._samples_muted = (flags & 0x02) == 0
+            self.state.streaming = not self._samples_muted
+            self._emit_state()
+
         if refresh_cfg or len(self.state.sensor_cfg) < 4:
+            # Best-effort labels — do not block Stream on for long GET storms.
             try:
-                await self.refresh_sensor_configs()
+                await self.refresh_sensor_configs(attempts=1, timeout=4.0)
             except Exception as exc:
                 self._log("warn", f"SENSOR_CFG refresh after stream on: {exc!r}")
-        # Fresh window so unique/raw counts align with "Stream on" soak.
-        self._reset_frame_stats(emit=False)
-        # Unmute whenever TX_EVT is on — cfg failures must not mute live EVT.
-        self._samples_muted = (flags & 0x02) == 0
-        self.state.streaming = not self._samples_muted
-        self._emit_state()
+
         self._log(
             "info",
-            f"Stream on — policy 0x{flags:02x}, SENSOR_CFG {len(self.state.sensor_cfg)}/4, "
-            f"muted={self._samples_muted}",
+            f"Stream on — policy 0x{self.state.policy_flags:02x}, "
+            f"SENSOR_CFG {len(self.state.sensor_cfg)}/4, muted={self._samples_muted}",
         )
 
     async def _ensure_tx_notify(self) -> None:
@@ -686,7 +702,7 @@ class Bs2BleSession:
         await asyncio.sleep(0.25)
         if go_live:
             try:
-                await self.refresh_sensor_configs(attempts=1, timeout=req_timeout)
+                await self.refresh_sensor_configs(attempts=1, timeout=4.0)
             except Exception as exc:
                 self._log("warn", f"SENSOR_CFG refresh after preset: {exc!r}")
         else:
@@ -795,8 +811,15 @@ class Bs2BleSession:
     async def _quiet_bootstrap(self, *, mode: str = "full") -> None:
         """Post-connect handshake. `fast` skips SENSOR_CFG GET storm (Auto go-live)."""
         req_timeout = BOOT_REQ_TIMEOUT_S if mode == "fast" else NORMAL_REQ_TIMEOUT_S
-        await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT, timeout=req_timeout)
-        await asyncio.sleep(0.35)
+        try:
+            await self.set_ble_policy(
+                BLE_POLICY_BOOT_DEFAULT,
+                timeout=NORMAL_REQ_TIMEOUT_S,
+                attempts=2,
+            )
+            await asyncio.sleep(0.35)
+        except Exception as exc:
+            self._log("warn", f"Quiet policy bootstrap skipped: {exc!r}")
         await self.ping(timeout=req_timeout, attempts=4)
         if mode != "fast":
             await self.refresh_sensor_configs(attempts=2, timeout=req_timeout)

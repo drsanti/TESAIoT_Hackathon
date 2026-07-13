@@ -687,6 +687,20 @@ class BleDashboardApp:
             self.page.update()
             return True
         except Exception as exc:
+            st = self.session.state
+            evt_flowing = sum(st.frame_raw.values()) > 0
+            if st.connected and (st.streaming or evt_flowing or (st.policy_flags & 0x02)):
+                self.session.unmute_receive()
+                self._set_phase(ConnPhase.LIVE)
+                self._navigate("live")
+                self._on_log(
+                    "warn",
+                    f"Stream / go-live incomplete ({exc!r}) — LIVE anyway "
+                    f"(policy=0x{st.policy_flags:02x} scene={self.last_preset_id})",
+                )
+                self._flush_ui(force=True)
+                self.page.update()
+                return True
             self._on_log("error", f"Stream / go-live failed: {exc!r}")
             if self.auto_enabled:
                 self._set_phase(ConnPhase.HUNTING)

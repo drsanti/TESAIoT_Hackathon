@@ -4,6 +4,8 @@ Desktop **BS2 over BLE** dashboard for the hackathon — replaces the experiment
 
 Uses **bleak** (WinRT / BlueZ / CoreBluetooth) instead of browser Web Bluetooth, so EVT timing and UI updates are not affected by Chrome notify batching.
 
+**Architecture** (FSM, scene presets, BLE data flow): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+
 ## Requirements
 
 - Python **3.10+**

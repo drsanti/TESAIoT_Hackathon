@@ -1,7 +1,14 @@
 {
   "channel": "stable",
-  "latest": "0.1.7",
+  "latest": "0.1.8",
   "firmware": [
+    {
+      "version": "0.1.8",
+      "file": "tesaiot-bitstream-0.1.8.hex",
+      "size": 5565733,
+      "date": "2026-07-13",
+      "notes": "Bitstream Studio 0.1.8 — Euler/Quat long-soak stable (CM33 fusion mailbox + soft rewind; CM55 stale accel-tilt fallback); Dev Kit default body"
+    },
     {
       "version": "0.1.7",
       "file": "tesaiot-bitstream-0.1.7.hex",
@@ -12,16 +19,30 @@
     {
       "version": "0.1.6",
       "file": "tesaiot-bitstream-0.1.6.hex",
-      "size": 5501984,
-      "date": "2026-07-08",
-      "notes": "Bitstream Studio 0.1.6 handoff firmware — BMI270 two-rate UART, stability"
+      "size": 5502074,
+      "date": "",
+      "notes": "Bitstream Studio 0.1.6 — BMI270 ~25 Hz UART, TFT rate pill fix, auto asset sync + reload"
     },
     {
       "version": "0.1.5",
       "file": "tesaiot-bitstream-0.1.5.hex",
       "size": 5466327,
       "date": "2026-07-07",
-      "notes": "Bitstream Studio 0.1.5 handoff firmware"
+      "notes": "Bitstream Studio 0.1.5 — disable WiFi, MQTT, UDP, BLE"
+    },
+    {
+      "version": "0.1.4",
+      "file": "tesaiot-bitstream-0.1.4.hex",
+      "size": 4844788,
+      "date": "2026-07-04",
+      "notes": "Bitstream Studio 0.1.4 handoff firmware"
+    },
+    {
+      "version": "0.1.3",
+      "file": "tesaiot-bitstream-0.1.3.hex",
+      "size": 4844788,
+      "date": "",
+      "notes": "Bitstream Studio 0.1.3 handoff firmware"
     }
   ]
 }

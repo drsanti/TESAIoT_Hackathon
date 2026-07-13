@@ -9,7 +9,7 @@ import flet as ft
 
 from bs2.decode import SENSOR_LABELS
 from ui.charts import LineSeriesChart, MultiSeriesBuffer
-from ui.theme import SENSOR_STRIPE, plot_mode_toggle
+from ui.theme import ACCENT, BORDER, CARD, SENSOR_STRIPE, SURFACE, TEXT, TEXT_MUTED, plot_mode_toggle
 
 
 def _clamp01(value: float) -> float:
@@ -22,26 +22,44 @@ def _axis_level(value: float, span: float) -> float:
     return _clamp01(abs(value) / span)
 
 
+def _section_label(text: str) -> ft.Text:
+    return ft.Text(
+        text,
+        size=10,
+        weight=ft.FontWeight.W_600,
+        color=TEXT_MUTED,
+    )
+
+
+def _soft_panel(content: ft.Control, *, expand: bool = True) -> ft.Container:
+    return ft.Container(
+        content=content,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=10,
+        padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+        expand=expand,
+    )
+
+
 class AxisBars(ft.Column):
     def __init__(self, title: str, labels: tuple[str, str, str], *, span: float) -> None:
         bars: list[ft.ProgressBar] = []
         vals: list[ft.Text] = []
-        rows: list[ft.Control] = [
-            ft.Text(title, size=11, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_400),
-        ]
+        rows: list[ft.Control] = [_section_label(title)]
         bar_colors = (ft.Colors.CYAN_400, ft.Colors.TEAL_300, ft.Colors.AMBER_300)
         for i, lab in enumerate(labels):
-            val = ft.Text(f"{lab}  -", size=13, color=ft.Colors.GREY_200)
+            val = ft.Text(f"{lab}  —", size=12, color=TEXT_MUTED)
             bar = ft.ProgressBar(
                 value=0,
-                bar_height=10,
+                bar_height=6,
                 color=bar_colors[i],
-                bgcolor=ft.Colors.GREY_800,
+                bgcolor="#1A1A24",
             )
             bars.append(bar)
             vals.append(val)
             rows.append(ft.Column([val, bar], spacing=2))
-        super().__init__(rows, spacing=6, expand=True)
+        super().__init__(rows, spacing=5, expand=True)
         self._span = span
         self._labels = labels
         self._bars = bars
@@ -52,12 +70,12 @@ class AxisBars(ft.Column):
             lab = self._labels[i]
             if raw is None:
                 self._bars[i].value = 0
-                self._vals[i].value = f"{lab}  -"
-                self._vals[i].color = ft.Colors.GREY_500
+                self._vals[i].value = f"{lab}  —"
+                self._vals[i].color = TEXT_MUTED
             else:
                 self._bars[i].value = _axis_level(raw, self._span)
                 self._vals[i].value = f"{lab}  {raw:+.2f}"
-                self._vals[i].color = ft.Colors.GREY_100
+                self._vals[i].color = TEXT
 
 
 class ScalarBar(ft.Column):
@@ -70,11 +88,11 @@ class ScalarBar(ft.Column):
         unit: str,
         color=ft.Colors.CYAN_400,
     ) -> None:
-        big = ft.Text("-", size=28, weight=ft.FontWeight.W_600)
-        bar = ft.ProgressBar(value=0, bar_height=12, color=color, bgcolor=ft.Colors.GREY_800)
+        big = ft.Text("—", size=26, weight=ft.FontWeight.W_600, color=TEXT)
+        bar = ft.ProgressBar(value=0, bar_height=8, color=color, bgcolor="#1A1A24")
         super().__init__(
             [
-                ft.Text(title, size=11, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_400),
+                _section_label(title),
                 big,
                 bar,
             ],
@@ -90,7 +108,7 @@ class ScalarBar(ft.Column):
 
     def set_value(self, value: float | None) -> None:
         if value is None or not math.isfinite(value):
-            self._big.value = "-"
+            self._big.value = "—"
             self._bar.value = 0
             return
         self._big.value = f"{value:.1f} {self._unit}"
@@ -98,35 +116,78 @@ class ScalarBar(ft.Column):
         self._bar.value = _clamp01((value - self._lo) / span) if span else 0
 
 
-class EulerTracks(ft.Column):
+class _OrientTile(ft.Container):
+    def __init__(self, label: str, accent: str) -> None:
+        self._value = ft.Text("—", size=28, weight=ft.FontWeight.W_600, color=TEXT)
+        self._unit = ft.Text("deg", size=10, color=TEXT_MUTED)
+        self._bar = ft.ProgressBar(
+            value=0.5,
+            bar_height=4,
+            color=accent,
+            bgcolor="#1A1A24",
+        )
+        super().__init__(
+            content=ft.Column(
+                [
+                    ft.Text(label, size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
+                    ft.Row(
+                        [self._value, self._unit],
+                        spacing=4,
+                        vertical_alignment=ft.CrossAxisAlignment.END,
+                    ),
+                    self._bar,
+                ],
+                spacing=4,
+                tight=True,
+            ),
+            bgcolor=SURFACE,
+            border=ft.Border.all(1, BORDER),
+            border_radius=10,
+            padding=ft.Padding.symmetric(horizontal=12, vertical=10),
+            expand=True,
+        )
+        self._accent = accent
+
+    def set_deg(self, deg: float | None, *, kind: str) -> None:
+        if deg is None or not math.isfinite(deg):
+            self._value.value = "—"
+            self._value.color = TEXT_MUTED
+            self._bar.value = 0.5
+            return
+        self._value.color = TEXT
+        if kind == "yaw":
+            wrapped = deg % 360.0
+            self._value.value = f"{wrapped:.0f}"
+            self._bar.value = _clamp01(wrapped / 360.0)
+        else:
+            self._value.value = f"{deg:+.0f}"
+            self._bar.value = _clamp01((deg + 90.0) / 180.0)
+
+
+class OrientationPanel(ft.Column):
+    """Yaw / pitch / roll as three equal tiles."""
+
     def __init__(self) -> None:
-        heading = ft.ProgressBar(value=0.5, bar_height=8, color=ft.Colors.PURPLE_300, bgcolor=ft.Colors.GREY_800)
-        pitch = ft.ProgressBar(value=0.5, bar_height=8, color=ft.Colors.INDIGO_300, bgcolor=ft.Colors.GREY_800)
-        roll = ft.ProgressBar(value=0.5, bar_height=8, color=ft.Colors.PINK_300, bgcolor=ft.Colors.GREY_800)
-        h_txt = ft.Text("heading -", size=11, color=ft.Colors.GREY_300)
-        p_txt = ft.Text("pitch -", size=11, color=ft.Colors.GREY_300)
-        r_txt = ft.Text("roll -", size=11, color=ft.Colors.GREY_300)
-        quat = ft.Text("quat -", size=11, color=ft.Colors.GREY_500)
+        self._yaw = _OrientTile("YAW", ACCENT)
+        self._pitch = _OrientTile("PITCH", ft.Colors.TEAL_300)
+        self._roll = _OrientTile("ROLL", ft.Colors.AMBER_300)
+        self._hint = ft.Text("", size=10, color=TEXT_MUTED, visible=False)
         super().__init__(
             [
-                ft.Text("Orientation", size=11, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_400),
-                h_txt,
-                heading,
-                p_txt,
-                pitch,
-                r_txt,
-                roll,
-                quat,
+                _section_label("ORIENTATION"),
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(self._yaw, col={"xs": 12, "sm": 4}),
+                        ft.Container(self._pitch, col={"xs": 12, "sm": 4}),
+                        ft.Container(self._roll, col={"xs": 12, "sm": 4}),
+                    ],
+                    spacing=8,
+                    run_spacing=8,
+                ),
+                self._hint,
             ],
-            spacing=3,
+            spacing=8,
         )
-        self._heading = heading
-        self._pitch = pitch
-        self._roll = roll
-        self._h_txt = h_txt
-        self._p_txt = p_txt
-        self._r_txt = r_txt
-        self._quat = quat
 
     def set_fields(self, fields: dict[str, float]) -> None:
         def deg(rad_key: str) -> float | None:
@@ -137,53 +198,121 @@ class EulerTracks(ft.Column):
         h = deg("headingRad")
         p = deg("pitchRad")
         r = deg("rollRad")
-        if h is None:
-            self._h_txt.value = "heading -"
-            self._heading.value = 0.5
-        else:
-            wrapped = h % 360.0
-            self._h_txt.value = f"heading {wrapped:.0f} deg"
-            self._heading.value = _clamp01(wrapped / 360.0)
-        if p is None:
-            self._p_txt.value = "pitch -"
-            self._pitch.value = 0.5
-        else:
-            self._p_txt.value = f"pitch {p:+.0f} deg"
-            self._pitch.value = _clamp01((p + 90.0) / 180.0)
-        if r is None:
-            self._r_txt.value = "roll -"
-            self._roll.value = 0.5
-        else:
-            self._r_txt.value = f"roll {r:+.0f} deg"
-            self._roll.value = _clamp01((r + 90.0) / 180.0)
+        self._yaw.set_deg(h, kind="yaw")
+        self._pitch.set_deg(p, kind="pitch")
+        self._roll.set_deg(r, kind="roll")
+        missing = h is None and p is None and r is None
+        self._hint.visible = missing
+        self._hint.value = "No Euler on wire — use fusion/hybrid with mask 0x1f" if missing else ""
 
+
+class QuaternionPanel(ft.Column):
+    """Four equal quaternion chips."""
+
+    def __init__(self) -> None:
+        self._chips: dict[str, ft.Text] = {}
+        chip_row: list[ft.Control] = []
+        for key, label in (("w", "W"), ("x", "X"), ("y", "Y"), ("z", "Z")):
+            val = ft.Text("—", size=18, weight=ft.FontWeight.W_600, color=TEXT_MUTED)
+            self._chips[key] = val
+            chip_row.append(
+                ft.Container(
+                    content=ft.Column(
+                        [
+                            ft.Text(label, size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
+                            val,
+                        ],
+                        spacing=2,
+                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                        tight=True,
+                    ),
+                    bgcolor=SURFACE,
+                    border=ft.Border.all(1, BORDER),
+                    border_radius=10,
+                    padding=ft.Padding.symmetric(horizontal=8, vertical=10),
+                    expand=True,
+                    alignment=ft.Alignment.CENTER,
+                )
+            )
+        self._hint = ft.Text("", size=10, color=TEXT_MUTED, visible=False)
+        super().__init__(
+            [
+                _section_label("QUATERNION"),
+                ft.Row(chip_row, spacing=8, expand=True),
+                self._hint,
+            ],
+            spacing=8,
+        )
+
+    def set_fields(self, fields: dict[str, float]) -> None:
         qw = fields.get("quatW")
         qx = fields.get("quatX")
         qy = fields.get("quatY")
         qz = fields.get("quatZ")
-        if qw is None:
-            self._quat.value = "quat -"
+        mapping = {"w": qw, "x": qx, "y": qy, "z": qz}
+        any_present = False
+        for key, raw in mapping.items():
+            txt = self._chips[key]
+            if raw is None or not math.isfinite(raw):
+                txt.value = "—"
+                txt.color = TEXT_MUTED
+            else:
+                any_present = True
+                txt.value = f"{raw:.3f}"
+                txt.color = TEXT
+        self._hint.visible = not any_present
+        self._hint.value = "No quaternion on wire — enable fusion bits in SENSOR_CFG" if not any_present else ""
+
+
+class MetaLine(ft.Row):
+    def __init__(self) -> None:
+        self._temp = ft.Text("Temp  —", size=11, color=TEXT_MUTED)
+        super().__init__([self._temp], spacing=12)
+
+    def set_temp(self, value: float | None) -> None:
+        if value is None or not math.isfinite(value):
+            self._temp.value = "Temp  —"
         else:
-            self._quat.value = f"quat {qw:.2f} · {qx or 0:.2f} · {qy or 0:.2f} · {qz or 0:.2f}"
+            self._temp.value = f"Temp  {value:.1f} °C"
+            self._temp.color = TEXT
+
+
+class EulerTracks(OrientationPanel):
+    """Backward-compatible alias used by app debug paths. """
+
+    pass
 
 
 def _build_bars_body(sensor_key: str) -> tuple[ft.Column, dict]:
     refs: dict = {}
-    body = ft.Column(spacing=8)
+    body = ft.Column(spacing=12)
     if sensor_key == "bmi270":
-        accel = AxisBars("Accel (g)", ("X", "Y", "Z"), span=2.0)
-        gyro = AxisBars("Gyro (deg/s raw)", ("X", "Y", "Z"), span=250.0)
-        euler = EulerTracks()
-        refs = {"accel": accel, "gyro": gyro, "euler": euler}
+        orient = OrientationPanel()
+        quat = QuaternionPanel()
+        accel = AxisBars("ACCEL (g)", ("X", "Y", "Z"), span=2.0)
+        gyro = AxisBars("GYRO", ("X", "Y", "Z"), span=250.0)
+        meta = MetaLine()
+        refs = {
+            "orient": orient,
+            "quat": quat,
+            "euler": orient,
+            "accel": accel,
+            "gyro": gyro,
+            "meta": meta,
+        }
         body.controls = [
+            orient,
+            quat,
+            _section_label("MOTION"),
             ft.ResponsiveRow(
                 [
-                    ft.Container(accel, col={"xs": 12, "md": 6}),
-                    ft.Container(gyro, col={"xs": 12, "md": 6}),
+                    ft.Container(_soft_panel(accel), col={"xs": 12, "md": 6}),
+                    ft.Container(_soft_panel(gyro), col={"xs": 12, "md": 6}),
                 ],
                 spacing=8,
+                run_spacing=8,
             ),
-            euler,
+            meta,
         ]
     elif sensor_key == "bmm350":
         mag = AxisBars("Mag (uT)", ("X", "Y", "Z"), span=80.0)
@@ -229,31 +358,32 @@ def _build_bars_body(sensor_key: str) -> tuple[ft.Column, dict]:
 
 def _build_lines_body(sensor_key: str) -> tuple[ft.Column, dict]:
     refs: dict = {}
-    body = ft.Column(spacing=8, expand=True)
+    body = ft.Column(spacing=10, expand=True)
     if sensor_key == "bmi270":
         accel_buf = MultiSeriesBuffer(("X", "Y", "Z"))
         gyro_buf = MultiSeriesBuffer(("X", "Y", "Z"))
-        euler_buf = MultiSeriesBuffer(("heading", "pitch", "roll"))
+        euler_buf = MultiSeriesBuffer(("yaw", "pitch", "roll"))
+        quat = QuaternionPanel()
+        euler_chart = LineSeriesChart(
+            title="Orientation (deg)",
+            y_min=-180,
+            y_max=360,
+            height=110,
+            series_labels=("yaw", "pitch", "roll"),
+        )
         accel_chart = LineSeriesChart(
             title="Accel (g)",
             y_min=-2,
             y_max=2,
-            height=120,
+            height=100,
             series_labels=("X", "Y", "Z"),
         )
         gyro_chart = LineSeriesChart(
             title="Gyro",
             y_min=-250,
             y_max=250,
-            height=120,
-            series_labels=("X", "Y", "Z"),
-        )
-        euler_chart = LineSeriesChart(
-            title="Euler (deg)",
-            y_min=-180,
-            y_max=360,
             height=100,
-            series_labels=("heading", "pitch", "roll"),
+            series_labels=("X", "Y", "Z"),
         )
         refs = {
             "accel_buf": accel_buf,
@@ -262,8 +392,13 @@ def _build_lines_body(sensor_key: str) -> tuple[ft.Column, dict]:
             "accel_chart": accel_chart,
             "gyro_chart": gyro_chart,
             "euler_chart": euler_chart,
+            "quat": quat,
         }
         body.controls = [
+            _section_label("ORIENTATION"),
+            euler_chart,
+            quat,
+            _section_label("MOTION"),
             ft.ResponsiveRow(
                 [
                     ft.Container(accel_chart, col={"xs": 12, "md": 6}),
@@ -271,7 +406,6 @@ def _build_lines_body(sensor_key: str) -> tuple[ft.Column, dict]:
                 ],
                 spacing=8,
             ),
-            euler_chart,
         ]
     elif sensor_key == "bmm350":
         mag_buf = MultiSeriesBuffer(("X", "Y", "Z"))
@@ -334,10 +468,18 @@ class SensorLiveCard(ft.Container):
         self._title_text = ft.Text(
             SENSOR_LABELS.get(sensor_key, sensor_key),
             weight=ft.FontWeight.W_600,
-            size=15,
+            size=14,
+            color=TEXT,
         )
-        self._badge_text = ft.Text("waiting...", size=11, color=ft.Colors.GREY_500)
-        self._stats_text = ft.Text("-", size=11, color=ft.Colors.CYAN_200)
+        self._mode_chip = ft.Container(
+            content=ft.Text("—", size=10, weight=ft.FontWeight.W_600, color=TEXT_MUTED),
+            padding=ft.Padding.symmetric(horizontal=8, vertical=3),
+            bgcolor=SURFACE,
+            border=ft.Border.all(1, BORDER),
+            border_radius=999,
+        )
+        self._badge_text = ft.Text("waiting…", size=11, color=TEXT_MUTED)
+        self._stats_text = ft.Text("—", size=11, color=ACCENT)
         self._plot_toggle_host = ft.Container()
 
         self._bars_body, self._bars_refs = _build_bars_body(sensor_key)
@@ -349,21 +491,25 @@ class SensorLiveCard(ft.Container):
             content=ft.Column(
                 [
                     self._header_row(),
-                    self._badge_text,
-                    self._stats_text,
+                    ft.Row(
+                        [self._badge_text, ft.Container(expand=True), self._stats_text],
+                        spacing=8,
+                        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    ),
+                    ft.Container(height=1, bgcolor=BORDER),
                     self._body_host,
                 ],
-                spacing=6,
+                spacing=8,
             ),
-            bgcolor="#12121A",
+            bgcolor=CARD,
             border=ft.Border(
                 left=ft.BorderSide(3, stripe),
-                top=ft.BorderSide(1, "#38384A"),
-                right=ft.BorderSide(1, "#38384A"),
-                bottom=ft.BorderSide(1, "#38384A"),
+                top=ft.BorderSide(1, BORDER),
+                right=ft.BorderSide(1, BORDER),
+                bottom=ft.BorderSide(1, BORDER),
             ),
-            border_radius=10,
-            padding=14,
+            border_radius=12,
+            padding=16,
         )
         self._sync_body()
 
@@ -379,10 +525,13 @@ class SensorLiveCard(ft.Container):
         return ft.Row(
             [
                 self._title_text,
+                self._mode_chip,
                 ft.Container(expand=True),
                 self._plot_toggle_host,
             ],
-            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=8,
         )
 
     def _select_plot_mode(self, mode: str) -> None:
@@ -414,9 +563,10 @@ class SensorLiveCard(ft.Container):
 
     def set_compact(self, compact: bool) -> None:
         self._compact = compact
-        self._title_text.size = 13 if compact else 15
+        self._title_text.size = 13 if compact else 14
         self._stats_text.visible = not compact
         self._badge_text.visible = not compact
+        self._mode_chip.visible = not compact
 
     def set_stats(self, line: str, *, ok: bool | None) -> None:
         self._stats_text.value = line
@@ -425,10 +575,28 @@ class SensorLiveCard(ft.Container):
         elif ok is False:
             self._stats_text.color = ft.Colors.ORANGE_300
         else:
-            self._stats_text.color = ft.Colors.CYAN_200
+            self._stats_text.color = ACCENT
 
     def set_badge(self, text: str) -> None:
         self._badge_text.value = text
+        # Promote stream mode into the header chip when present (e.g. "fusion · 15.2 Hz").
+        lower = text.lower()
+        mode = "—"
+        for token in ("fusion", "hybrid", "raw"):
+            if token in lower:
+                mode = token
+                break
+        chip_text = self._mode_chip.content
+        if isinstance(chip_text, ft.Text):
+            chip_text.value = mode
+            if mode == "fusion":
+                chip_text.color = ACCENT
+            elif mode == "hybrid":
+                chip_text.color = ft.Colors.TEAL_300
+            elif mode == "raw":
+                chip_text.color = TEXT_MUTED
+            else:
+                chip_text.color = TEXT_MUTED
 
     def refresh_charts(self) -> None:
         key = self.sensor_key
@@ -458,9 +626,11 @@ class SensorLiveCard(ft.Container):
         key = self.sensor_key
         refs = self._bars_refs
         if key == "bmi270":
+            refs["orient"].set_fields(fields)
+            refs["quat"].set_fields(fields)
             refs["accel"].set_xyz(fields.get("accelX"), fields.get("accelY"), fields.get("accelZ"))
             refs["gyro"].set_xyz(fields.get("gyroX"), fields.get("gyroY"), fields.get("gyroZ"))
-            refs["euler"].set_fields(fields)
+            refs["meta"].set_temp(fields.get("temperatureC"))
         elif key == "bmm350":
             refs["mag"].set_xyz(fields.get("magX"), fields.get("magY"), fields.get("magZ"))
             refs["temp"].set_value(fields.get("temperatureC"))
@@ -476,6 +646,7 @@ class SensorLiveCard(ft.Container):
         key = self.sensor_key
         refs = self._lines_refs
         if key == "bmi270":
+            refs["quat"].set_fields(fields)
             refs["accel_buf"].push(
                 {"X": fields.get("accelX"), "Y": fields.get("accelY"), "Z": fields.get("accelZ")}
             )
@@ -487,7 +658,7 @@ class SensorLiveCard(ft.Container):
             r = fields.get("rollRad")
             refs["euler_buf"].push(
                 {
-                    "heading": (h * 180 / math.pi) if h is not None else None,
+                    "yaw": (h * 180 / math.pi) if h is not None else None,
                     "pitch": (p * 180 / math.pi) if p is not None else None,
                     "roll": (r * 180 / math.pi) if r is not None else None,
                 }
@@ -520,7 +691,7 @@ class SensorLiveCard(ft.Container):
 
     @property
     def euler(self):
-        return self._bars_refs.get("euler")
+        return self._bars_refs.get("euler") or self._bars_refs.get("orient")
 
     @property
     def mag(self):

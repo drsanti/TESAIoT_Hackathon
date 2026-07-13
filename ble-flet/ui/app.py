@@ -100,11 +100,13 @@ class BleDashboardApp:
         self.auto_switch = ft.Switch(
             label="Auto",
             value=self.auto_enabled,
+            active_color=ft.Colors.LIGHT_BLUE_400,
             on_change=self._on_auto_toggle,
         )
         self.update_on_data_switch = ft.Switch(
             label="Update on data",
             value=self.update_on_data,
+            active_color=ft.Colors.LIGHT_BLUE_400,
             on_change=self._on_update_on_data_toggle,
         )
 
@@ -118,6 +120,8 @@ class BleDashboardApp:
         self._last_ui_paint_s = 0.0
         self._ui_flush_task: asyncio.Task | None = None
         self._chrome_dirty = False
+        self._stream_watch_raw = 0
+        self._stream_watch_at = 0.0
 
         for key in ("bmi270", "bmm350", "sht40", "dps368"):
             meta = ft.Text("waiting…", size=11, color=ft.Colors.GREY_500)
@@ -226,13 +230,15 @@ class BleDashboardApp:
             layout_preset=self.prefs.layout_preset,
             focus_sensor=self.prefs.focus_sensor,
             sidebar_collapsed=self.prefs.sidebar_collapsed,
-            auto_switch=self.auto_switch,
-            update_on_data_switch=self.update_on_data_switch,
+            auto_enabled=self.auto_enabled,
+            update_on_data=self.update_on_data,
             plot_modes=dict(self.prefs.plot_mode),
             on_layout=self._set_layout_preset,
             on_focus_sensor=self._set_focus_sensor,
             on_sidebar_mode=self._set_sidebar_collapsed,
             on_plot_mode=self._set_plot_mode_pref,
+            on_auto_change=self._set_auto_enabled,
+            on_update_on_data_change=self._set_update_on_data,
         )
 
         self.sidebar = SidebarNav(
@@ -245,10 +251,7 @@ class BleDashboardApp:
             on_toggle=self._toggle_sidebar,
         )
 
-        self._top_bar = build_top_bar(
-            route_title=ROUTE_LABELS.get(self.prefs.active_route, "Live"),
-            trailing=self.auto_switch,
-        )
+        self._top_bar = self._build_top_bar_for_route(self.prefs.active_route)
         self._shell = AppShell(
             sidebar=self.sidebar,
             top_bar=self._top_bar,
@@ -281,6 +284,20 @@ class BleDashboardApp:
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+    def _build_top_bar_for_route(self, route: str) -> ft.Container:
+        subtitles = {
+            "live": "Sensor stream over BLE",
+            "connect": "Scan and link to the board",
+            "log": "Session diagnostics",
+            "settings": "Layout and connection defaults",
+        }
+        trailing = None if route == "settings" else self.auto_switch
+        return build_top_bar(
+            route_title=ROUTE_LABELS.get(route, route),
+            subtitle=subtitles.get(route),
+            trailing=trailing,
+        )
+
     def _page_for_route(self, route: str) -> ft.Control:
         if route == "connect":
             return self.connect_page.build()
@@ -294,7 +311,8 @@ class BleDashboardApp:
         self.prefs.active_route = route
         self.prefs_store.schedule_save()
         self.sidebar.update_state(active_route=route)
-        self._top_bar.content.controls[0].value = ROUTE_LABELS.get(route, route)
+        self._top_bar = self._build_top_bar_for_route(route)
+        self._shell.set_top_bar(self._top_bar)
         self._shell.set_page_content(self._page_for_route(route))
         self.page.update()
 
@@ -497,6 +515,7 @@ class BleDashboardApp:
             if self.phase is ConnPhase.PARKED:
                 return
             if self.phase is ConnPhase.LIVE and self.session.connected:
+                await self._maybe_heal_stream()
                 await asyncio.sleep(0.5)
                 continue
             if self.phase is ConnPhase.RECOVERING:
@@ -554,7 +573,15 @@ class BleDashboardApp:
 
         device = self._pick_device(ranked)
         if device is None:
-            self._on_log("info", "Auto: no TESAIoT peripheral yet — will backoff and retry")
+            self._on_log(
+                "info",
+                "Auto: no TESAIoT peripheral yet — will backoff and retry "
+                "(if board has been up >1 min, BLE adverts may have stopped — press MCU reset or reflash ADV fix)",
+            )
+            self.live_hint.value = (
+                "No TESAIoT found yet — if the board has been running a while, "
+                "press reset on the board (BLE adverts stop after ~60 s on older firmware)."
+            )
             self.page.update()
             return False
 
@@ -686,6 +713,39 @@ class BleDashboardApp:
             return
         self._on_log("warn", f"Link lost · RECOVERING ({st_note})")
         self._start_auto_loop(ConnPhase.RECOVERING)
+
+    async def _maybe_heal_stream(self) -> None:
+        """If LIVE but no BLE EVT for ~12s, re-assert Stream on (muted / policy wedge)."""
+        st = self.session.state
+        if not st.connected:
+            return
+        raw_total = sum(st.frame_raw.values())
+        now = time.monotonic()
+        if raw_total != self._stream_watch_raw:
+            self._stream_watch_raw = raw_total
+            self._stream_watch_at = now
+            return
+        if self._stream_watch_at <= 0:
+            self._stream_watch_at = now
+            return
+        if (now - self._stream_watch_at) < 12.0:
+            return
+        self._stream_watch_at = now
+        pol = st.policy_flags
+        self._on_log(
+            "warn",
+            f"No BLE EVT for 12s while LIVE — healing stream "
+            f"(policy=0x{pol:02x} streaming={st.streaming} tx_drops={st.link_tx_drops})",
+        )
+        try:
+            await self.session.enable_streaming(refresh_cfg=len(st.sensor_cfg) < 4)
+            await self.session.read_link_snapshot()
+            self.session.reset_frame_counts()
+            self._stream_watch_raw = 0
+            self._stream_watch_at = time.monotonic()
+            self._flush_ui(force=True)
+        except Exception as exc:
+            self._on_log("error", f"Stream heal failed: {exc!r}")
 
     def _apply_stats_to_control(self, key: str) -> None:
         line = self.session.frame_stats_line(key)
@@ -876,10 +936,39 @@ class BleDashboardApp:
         else:
             self._schedule_ui_flush()
 
-    def _on_update_on_data_toggle(self, e: ft.ControlEvent) -> None:
-        self.update_on_data = bool(e.control.value)
-        self.prefs.update_on_data = self.update_on_data
+    def _set_auto_enabled(self, enabled: bool) -> None:
+        self.auto_enabled = enabled
+        self.auto_switch.value = enabled
+        self.prefs.auto_enabled = enabled
         self.prefs_store.schedule_save()
+        self.settings_page.update_state(auto_enabled=enabled)
+        if self.auto_enabled:
+            if self.session.connected and self.session.state.streaming:
+                self._set_phase(ConnPhase.LIVE)
+                self._start_auto_loop(ConnPhase.LIVE)
+            elif self.session.connected:
+                self._set_phase(ConnPhase.LINKED)
+                self._cancel_auto_loop()
+                asyncio.create_task(self._go_live_then_watch())
+            else:
+                self._hunt_fails = 0
+                self._start_auto_loop(ConnPhase.HUNTING)
+            self._on_log("info", "Auto ON — hunt / restore enabled")
+        else:
+            self._cancel_auto_loop()
+            if self.session.connected:
+                self._set_phase(ConnPhase.LIVE if self.session.state.streaming else ConnPhase.LINKED)
+            else:
+                self._set_phase(ConnPhase.PARKED)
+            self._on_log("info", "Auto OFF — manual mode (no hunt on disconnect)")
+        self.page.update()
+
+    def _set_update_on_data(self, enabled: bool) -> None:
+        self.update_on_data = enabled
+        self.update_on_data_switch.value = enabled
+        self.prefs.update_on_data = enabled
+        self.prefs_store.schedule_save()
+        self.settings_page.update_state(update_on_data=enabled)
         task = self._ui_flush_task
         self._ui_flush_task = None
         if task is not None and not task.done():
@@ -889,6 +978,12 @@ class BleDashboardApp:
         self._refresh_window_line()
         self._flush_ui(force=True)
         self.page.update()
+
+    def _on_update_on_data_toggle(self, e: ft.ControlEvent) -> None:
+        self._set_update_on_data(bool(e.control.value))
+
+    def _on_auto_toggle(self, e: ft.ControlEvent) -> None:
+        self._set_auto_enabled(bool(e.control.value))
 
     def _on_state(self, state: SessionState) -> None:
         if state.connected:
@@ -919,31 +1014,6 @@ class BleDashboardApp:
             except Exception:
                 pass
 
-    def _on_auto_toggle(self, e: ft.ControlEvent) -> None:
-        self.auto_enabled = bool(e.control.value)
-        self.prefs.auto_enabled = self.auto_enabled
-        self.prefs_store.schedule_save()
-        if self.auto_enabled:
-            if self.session.connected and self.session.state.streaming:
-                self._set_phase(ConnPhase.LIVE)
-                self._start_auto_loop(ConnPhase.LIVE)
-            elif self.session.connected:
-                self._set_phase(ConnPhase.LINKED)
-                self._cancel_auto_loop()
-                asyncio.create_task(self._go_live_then_watch())
-            else:
-                self._hunt_fails = 0
-                self._start_auto_loop(ConnPhase.HUNTING)
-            self._on_log("info", "Auto ON — hunt / restore enabled")
-        else:
-            self._cancel_auto_loop()
-            if self.session.connected:
-                self._set_phase(ConnPhase.LIVE if self.session.state.streaming else ConnPhase.LINKED)
-            else:
-                self._set_phase(ConnPhase.PARKED)
-            self._on_log("info", "Auto OFF — manual mode (no hunt on disconnect)")
-        self.page.update()
-
     async def _go_live_then_watch(self) -> None:
         await self._go_live_existing()
         if self.auto_enabled and self.session.connected:
@@ -955,12 +1025,16 @@ class BleDashboardApp:
         scene_id = AUTO_STREAM_SCENE_PRESET
         try:
             try:
-                line = await self.session.apply_scene_preset(scene_id)
+                line = await self.session.apply_scene_preset(scene_id, go_live=True)
                 self.last_preset_id = scene_id
                 self._on_log("info", f"Scene OK · {line}")
             except Exception as exc:
                 self._on_log("warn", f"Scene {scene_id} failed: {exc!r}")
-            await self.session.enable_streaming()
+                if self.session.connected:
+                    try:
+                        await self.session.enable_streaming()
+                    except Exception as exc2:
+                        self._on_log("warn", f"Stream on fallback failed: {exc2!r}")
             self.session.reset_frame_counts()
             self._set_phase(ConnPhase.LIVE)
             self._navigate("live")
@@ -975,10 +1049,7 @@ class BleDashboardApp:
                 self._start_auto_loop(ConnPhase.HUNTING)
 
     async def _resume_auto(self, _e: ft.ControlEvent) -> None:
-        self.auto_enabled = True
-        self.auto_switch.value = True
-        self.prefs.auto_enabled = True
-        self.prefs_store.schedule_save()
+        self._set_auto_enabled(True)
         self._hunt_fails = 0
         self._on_log("info", f"Resume auto · prefer={self.last_address or 'best-RSSI'} · scene={self.last_preset_id}")
         self._start_auto_loop(ConnPhase.HUNTING)

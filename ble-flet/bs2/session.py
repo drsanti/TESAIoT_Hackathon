@@ -120,6 +120,8 @@ class SessionState:
     count_window_started_ms: float = 0.0
     # Monotonic MCU uptime ms from EVT_SENSOR (resets on chip reboot).
     peak_device_ms: int = 0
+    # Last known BMI270 stream mode: 0=raw, 1=fusion, 2=hybrid (−1 = unknown).
+    bmi270_stream_mode: int = -1
 
 
 class Bs2BleSession:
@@ -147,6 +149,7 @@ class Bs2BleSession:
         self._meas: dict[int, deque[_MeasPoint]] = {}
         self._rate_segment: dict[int, _RateSegment] = {}
         self._counter_resets: dict[int, int] = {}
+        self._cfg_drop_logged: set[str] = set()
         self._samples_muted = True
         self._notify_loop: asyncio.AbstractEventLoop | None = None
         self._user_disconnect = False
@@ -257,6 +260,11 @@ class Bs2BleSession:
         key = sample["sensor"]
         cfg = self.state.sensor_cfg.get(key)
         parts = [f"#{sample['counter']}", "ble"]
+        if key == "bmi270":
+            mode_names = {0: "raw", 1: "fusion", 2: "hybrid"}
+            mode = mode_names.get(self.state.bmi270_stream_mode)
+            if mode:
+                parts.append(mode)
         if cfg:
             parts.append(f"cfg {format_configured_rate(cfg)}")
         meas = format_measured_rate(self.authoritative_meas_hz(key))
@@ -460,6 +468,13 @@ class Bs2BleSession:
         assert last_exc is not None
         raise last_exc
 
+    def _sync_streaming_from_policy(self) -> None:
+        """Keep host delivery aligned with echoed BLE policy when SET retries fail."""
+        tx_evt = (self.state.policy_flags & 0x02) != 0
+        self._samples_muted = not tx_evt
+        self.state.streaming = tx_evt
+        self._emit_state()
+
     async def enable_streaming(self, *, refresh_cfg: bool = False) -> None:
         """Enable BLE EVT egress (policy 0x07).
 
@@ -468,10 +483,21 @@ class Bs2BleSession:
         """
         if self._client is None or not self._client.is_connected:
             raise RuntimeError("not connected")
+        prior_muted = self._samples_muted
         self._samples_muted = True
-        flags = await self.set_ble_policy(
-            BLE_POLICY_FACTORY_STREAMING, timeout=BOOT_REQ_TIMEOUT_S, attempts=4
-        )
+        try:
+            flags = await self.set_ble_policy(
+                BLE_POLICY_FACTORY_STREAMING, timeout=BOOT_REQ_TIMEOUT_S, attempts=4
+            )
+        except Exception:
+            if (self.state.policy_flags & 0x02) != 0:
+                self._samples_muted = False
+                self.state.streaming = True
+                self._emit_state()
+            else:
+                self._samples_muted = prior_muted
+            raise
+        await self._ensure_tx_notify()
         if refresh_cfg or len(self.state.sensor_cfg) < 4:
             try:
                 await self.refresh_sensor_configs()
@@ -485,8 +511,20 @@ class Bs2BleSession:
         self._emit_state()
         self._log(
             "info",
-            f"Stream on — policy 0x{flags:02x}, SENSOR_CFG {len(self.state.sensor_cfg)}/4",
+            f"Stream on — policy 0x{flags:02x}, SENSOR_CFG {len(self.state.sensor_cfg)}/4, "
+            f"muted={self._samples_muted}",
         )
+
+    async def _ensure_tx_notify(self) -> None:
+        """Re-arm BS_TX notify (WinRT can miss CCCD after reconnect)."""
+        if self._client is None or not self._client.is_connected:
+            return
+        try:
+            await self._client.start_notify(BS2_BLE_CHAR_BS_TX_UUID, self._on_notify)
+            self._notify_loop = asyncio.get_running_loop()
+            await asyncio.sleep(0.05)
+        except Exception as exc:
+            self._log("warn", f"BS_TX notify re-arm: {exc!r}")
 
     async def set_ble_policy(self, flags: int, timeout: float = 8.0, *, attempts: int = 3) -> int:
         want = flags & 0x3F
@@ -602,7 +640,10 @@ class Bs2BleSession:
             raise RuntimeError(f"BMI270_MODE_SET status={res[2]}")
         if not res[3]:
             raise RuntimeError("BMI270_MODE_SET empty body")
-        return res[3][0]
+        applied = int(res[3][0])
+        self.state.bmi270_stream_mode = applied
+        self._emit_state()
+        return applied
 
     async def set_bmi270_fusion_feed(self, interval_ms: int, timeout: float = 8.0) -> int:
         body = struct.pack("<H", int(interval_ms) & 0xFFFF)
@@ -653,9 +694,21 @@ class Bs2BleSession:
         missing = [k for k in SENSOR_IDS if k not in self.state.sensor_cfg]
         if missing:
             self._log("warn", f"Preset {preset_id} incomplete cfg: {', '.join(missing)}")
-        if was_streaming:
-            await self.enable_streaming(refresh_cfg=False)
-        elif not go_live:
+        if go_live:
+            try:
+                await self.enable_streaming(
+                    refresh_cfg=len(self.state.sensor_cfg) < 4,
+                )
+            except Exception as exc:
+                self._log("warn", f"Stream on after preset ({preset_id}): {exc!r}")
+                self._sync_streaming_from_policy()
+        elif was_streaming:
+            try:
+                await self.enable_streaming(refresh_cfg=False)
+            except Exception as exc:
+                self._log("warn", f"Stream restore after preset ({preset_id}): {exc!r}")
+                self._sync_streaming_from_policy()
+        else:
             self._samples_muted = False
         line = scene_preset_status_line(preset)
         self._log("info", line)
@@ -839,8 +892,17 @@ class Bs2BleSession:
 
         sample_key = sample["sensor"]
         cfg = self.state.sensor_cfg.get(sample_key)
-        if not cfg or not cfg.get("enabled") or cfg.get("mask", 0) == 0:
-            return
+        if cfg is not None:
+            if not cfg.get("enabled") or cfg.get("mask", 0) == 0:
+                if sample_key not in self._cfg_drop_logged:
+                    self._cfg_drop_logged.add(sample_key)
+                    self._log(
+                        "warn",
+                        f"EVT dropped ({sample_key}): SENSOR_CFG disabled/mask=0 — "
+                        f"tap Motion/Realtime or reconnect",
+                    )
+                return
+        # When GET failed but SET succeeded, cfg may be missing — still deliver EVT.
 
         self.state.latest_sample[sample_key] = sample
         hz = self.authoritative_meas_hz(sample_key)

@@ -42,7 +42,7 @@ def card_shell(
     content: ft.Control,
     *,
     accent: str | None = None,
-    padding: int = 14,
+    padding: int = 16,
 ) -> ft.Container:
     border = ft.Border(
         left=ft.BorderSide(3, accent) if accent else ft.BorderSide(0, "transparent"),
@@ -54,7 +54,7 @@ def card_shell(
         content=content,
         bgcolor=CARD,
         border=border,
-        border_radius=10,
+        border_radius=12,
         padding=padding,
     )
 
@@ -74,8 +74,8 @@ def segmented_chips(
     on_select,
     *,
     dense: bool = False,
-) -> ft.Row:
-    """Small pill segmented control — option key + label."""
+) -> ft.Container:
+    """Segmented control — muted track, accent active chip."""
     controls: list[ft.Control] = []
     for key, label in options:
         active = key == selected
@@ -84,18 +84,24 @@ def segmented_chips(
                 content=ft.Text(
                     label,
                     size=11 if dense else 12,
-                    weight=ft.FontWeight.W_600 if active else ft.FontWeight.NORMAL,
+                    weight=ft.FontWeight.W_600 if active else ft.FontWeight.W_500,
                     color=TEXT if active else TEXT_MUTED,
                 ),
-                padding=ft.Padding.symmetric(horizontal=10, vertical=6 if dense else 8),
-                bgcolor="#1E3A5F" if active else SURFACE,
-                border=ft.Border.all(1, ACCENT if active else BORDER),
+                padding=ft.Padding.symmetric(horizontal=12, vertical=7 if dense else 8),
+                bgcolor="#152033" if active else "transparent",
+                border=ft.Border.all(1, ACCENT if active else "transparent"),
                 border_radius=8,
                 on_click=lambda e, k=key: on_select(k),
                 ink=True,
             )
         )
-    return ft.Row(controls, spacing=6, wrap=True)
+    return ft.Container(
+        content=ft.Row(controls, spacing=4, wrap=False),
+        padding=4,
+        bgcolor=SURFACE,
+        border=ft.Border.all(1, BORDER),
+        border_radius=10,
+    )
 
 
 def plot_mode_toggle(

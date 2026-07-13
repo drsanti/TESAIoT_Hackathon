@@ -8,11 +8,9 @@
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
-|                    |                                                                                      |
-| :----------------- | :----------------------------------------------------------------------------------- |
-| **Latest release** | Bitstream Studio **0.1.8** (VSIX + matching HEX)                                     |
-| **Released**       | 2026-07-13                                                                           |
-| **Repository**     | [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon) |
+- **Latest release:** Bitstream Studio **0.1.8** (VSIX + matching HEX)
+- **Released:** 2026-07-13
+- **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
 
 > Prefer matching VSIX and firmware versions. When in doubt, use the **`latest`** entry in the firmware manifest.
 

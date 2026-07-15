@@ -1,7 +1,14 @@
 {
   "channel": "stable",
-  "latest": "0.1.8",
+  "latest": "0.1.9",
   "firmware": [
+    {
+      "version": "0.1.9",
+      "file": "tesaiot-bitstream-0.1.9.hex",
+      "size": 5609113,
+      "date": "2026-07-15",
+      "notes": "Bitstream Studio 0.1.9 — RTC auto-sync, TFT System tab, SW_BTN/ADC_POT board I/O, hybrid sensor boot defaults, DevKit callouts"
+    },
     {
       "version": "0.1.8",
       "file": "tesaiot-bitstream-0.1.8.hex",

@@ -25,6 +25,7 @@ Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **
 | [`flasher/`](flasher/)   | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
 | [`web-app/`](web-app/)   | Telemetry provider HTML examples (ex01–ex15)                 |
 | [`ble-flet/`](ble-flet/) | Desktop BLE dashboard (Python Flet + bleak)                  |
+| [`python-app/`](python-app/) | Progressive BLE + BS2 Python labs (GATT ATT ops + all sensors) |
 
 ---
 

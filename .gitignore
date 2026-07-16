@@ -20,3 +20,9 @@ hex/AGENT.md
 vsix/BUILD.txt
 vsix/AGENT.md
 flasher/BUILD.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+

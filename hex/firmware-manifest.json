@@ -1,7 +1,14 @@
 {
   "channel": "stable",
-  "latest": "0.1.9",
+  "latest": "0.1.10",
   "firmware": [
+    {
+      "version": "0.1.10",
+      "file": "tesaiot-bitstream-0.1.10.hex",
+      "size": 5615638,
+      "date": "2026-07-17",
+      "notes": "Bitstream Studio 0.1.10 — SW_BTN/ADC_POT 20 Hz defaults, SHT40/DPS368 delta 5%, Machine Twin Dev Kit I/O, Telemetry Meta color labels, hybrid sensor boot"
+    },
     {
       "version": "0.1.9",
       "file": "tesaiot-bitstream-0.1.9.hex",

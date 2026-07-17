@@ -1,6 +1,6 @@
 /**
- * Shared helpers for Bitstream Studio TESAIoT_Hackathon examples (ex02–ex08).
- * ex01 remains self-contained; import this module from sibling HTML pages.
+ * Shared helpers for Bitstream Studio TESAIoT_Hackathon examples (ex01–ex08).
+ * Import this module from sibling HTML pages for SDK load + UI helpers.
  */
 
 /** Import URLs tried in order (VSIX serve → legacy alias → bundled vendor copy). */

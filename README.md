@@ -21,10 +21,10 @@ Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **
 | Folder                   | Purpose                                                      |
 | ------------------------ | ------------------------------------------------------------ |
 | [`vsix/`](vsix/)         | Bitstream Studio extension — install in VS Code or Cursor    |
+| [`ide/`](ide/)           | BitStream IDE installers (all-in-one app; optional)          |
 | [`hex/`](hex/)           | DevKit firmware — flash before hardware labs                 |
 | [`flasher/`](flasher/)   | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
 | [`web-app/`](web-app/)   | Telemetry provider HTML examples (ex01–ex15)                 |
-| [`ble-flet/`](ble-flet/) | Desktop BLE dashboard (Python Flet + bleak)                  |
 | [`python-app/`](python-app/) | Progressive BLE + BS2 Python labs (GATT ATT ops + all sensors) |
 
 ---
@@ -33,7 +33,8 @@ Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **
 
 | Item                                                                       | When you need it                                                             |
 | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| [VS Code](https://code.visualstudio.com/) or [Cursor](https://cursor.com/) | Always — to run Bitstream Studio                                             |
+| [VS Code](https://code.visualstudio.com/) or [Cursor](https://cursor.com/) | Always — to run Bitstream Studio VSIX **or** use [`ide/`](ide/) BitStream IDE |
+| **BitStream IDE** (optional)                                               | All-in-one installers in [`ide/`](ide/) — no separate VSIX step              |
 | **TESAIoT PSoC Edge DevKit** + USB cable                                   | Hardware labs (**Bitstream** mode)                                           |
 | **TESAIoT Flasher** or **ModusToolbox**                                    | To flash firmware from [`hex/`](hex/) — installers in [`flasher/`](flasher/) |
 | **Bitstream Simulator** extension (optional)                               | Try the UI **without** a board (**Simulator** mode)                          |
@@ -114,20 +115,20 @@ The [`web-app/`](web-app/) folder has HTML pages that display **live sensor data
 
 Open [`web-app/index.html`](web-app/index.html) in the served site for the full catalog and short instructions.
 
-### Desktop BLE (Flet)
+### Desktop BLE (Python labs)
 
-For **direct BLE to the DevKit** (no browser Web Bluetooth), use the Flet app in [`ble-flet/`](ble-flet/):
+For **direct BLE to the DevKit** (no browser Web Bluetooth), use the teaching labs in [`python-app/`](python-app/):
 
 ```bash
-cd ble-flet
-python -m venv .venv && .venv\Scripts\activate   # Windows
-pip install -r requirements.txt
-python main.py
+cd python-app
+python -m pip install -r requirements.txt
+./run_lab.sh 01          # Unix
+run_lab.cmd 01           # Windows
 ```
 
-See [`ble-flet/README.md`](ble-flet/README.md) for the scan → connect → stream workflow.
+See [`python-app/README.md`](python-app/README.md) for the lab map (scan → connect → GATT → PING → sensors).
 
-**Rate stats:** trust **`meas`** (counter ÷ MCU `deviceMs`) vs **`cfg`**. The card badge `#NNN` is the live EVT counter — not the session `evt total`.
+**Rate tip:** keep teaching labs near **1 Hz** periodic rates (`shared/rates.py`). High multi-sensor rates over BLE can starve CM33.
 
 ### Example catalog
 

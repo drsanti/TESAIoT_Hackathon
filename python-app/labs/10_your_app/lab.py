@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Lab 10 — build-your-own scaffold.
 
-Edit the TODO block: pick ≥1 IMU, ≥1 environment, ≥1 HMI (pot or button).
+Edit MY_SENSORS: pick >=1 IMU, >=1 environment, >=1 HMI (pot or button).
 """
 
 from __future__ import annotations
@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from shared.lab_helpers import connect_and_live, duration_arg
 from shared.rates import (
     TEACHING_ADC_DELTA_MV,
     TEACHING_ADC_MIN_PUB_MS,
@@ -31,9 +32,9 @@ from shared.session_lite import SessionLite
 
 # --- Student picks (edit me) ---
 MY_SENSORS = [
-    SENSOR_BMI270,  # IMU class
-    SENSOR_SHT40,  # environment class
-    SENSOR_SW_BTN,  # HMI class (or SENSOR_ADC_POT)
+    SENSOR_BMI270,  # IMU
+    SENSOR_SHT40,  # environment
+    SENSOR_SW_BTN,  # HMI (or SENSOR_ADC_POT)
 ]
 
 
@@ -84,10 +85,10 @@ def _cfg(sid: int, *, enabled: bool) -> dict:
 
 
 async def main() -> None:
-    duration = float(sys.argv[1]) if len(sys.argv) > 1 else 15.0
+    duration = duration_arg(15.0)
     print("Lab 10 — your app scaffold\n")
     print(f"Active sensor ids: {MY_SENSORS}")
-    print(f"Teaching rate: ~{1000 // TEACHING_PERIODIC_MS} Hz periodic (BLE-safe).\n")
+    print(f"Teaching rate: ~{1000 // TEACHING_PERIODIC_MS} Hz periodic.\n")
 
     latest: dict[int, dict] = {}
     session = SessionLite()
@@ -100,23 +101,11 @@ async def main() -> None:
     session.set_sample_handler(on_sample)
 
     try:
-        await session.connect()
-        await session.enable_notify()
-        await session.ping(attempts=3)
+        await connect_and_live(session)
+        await session.apply_cfgs_fire([_cfg(sid, enabled=sid in MY_SENSORS) for sid in range(6)])
+        await asyncio.sleep(0.3)
 
-        session.mute_samples(True)
-        await session.quiet_for_config()
-
-        for sid in range(6):
-            await session.sensor_cfg_set(_cfg(sid, enabled=sid in MY_SENSORS))
-
-        try:
-            await session.enable_streaming_policy()
-        except Exception as exc:
-            print(f"warn: BLE_POLICY_SET: {exc}")
-            session.mute_samples(False)
-
-        print("Running… edit on_sample / MY_SENSORS to customize.\n")
+        print("Running... edit on_sample / MY_SENSORS to customize.\n")
         await asyncio.sleep(duration)
 
         got = [s for s in MY_SENSORS if s in latest]
@@ -124,7 +113,7 @@ async def main() -> None:
         if len(got) == 0:
             print("FAIL: no samples — check MY_SENSORS and hardware.")
             raise SystemExit(1)
-        print("SUCCESS — scaffold runs. Now make it yours (see LAB.md checklist).")
+        print("SUCCESS — scaffold runs. Now make it yours (see LAB.md).")
     finally:
         await session.disconnect()
 

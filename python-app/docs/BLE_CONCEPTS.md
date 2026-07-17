@@ -57,4 +57,4 @@ Hands-on ATT lab: **`labs/03_gatt_ops/`**.
 
 ## Rate limits (do not flood BLE)
 
-CM33 GATT + IPC cannot sustain high multi-sensor EVT rates. Too much traffic can freeze the TFT (WDT). Teaching labs use ~**1 Hz** periodic configs from `shared/rates.py`. Prefer **on_change** for pots/buttons. Leave Motion-style rates to ble-flet after you know the board is stable.
+CM33 GATT + IPC cannot sustain high multi-sensor EVT rates. Too much traffic can freeze the TFT (WDT). Teaching labs use ~**1 Hz** periodic configs from `shared/rates.py`. Prefer **on_change** for pots/buttons.

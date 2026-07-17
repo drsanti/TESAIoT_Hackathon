@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Lab 05 — SENSOR_CFG GET/SET for sensors 0–5."""
+"""Lab 05 — focus one sensor (fire-and-forget SENSOR_CFG, no RES wait).
+
+Examples:
+  python lab.py              # BMI270 for 12s
+  python lab.py 15           # BMI270 for 15s
+  python lab.py --focus 4    # pots (periodic smoke)
+  python lab.py 15 --focus 5 # buttons for 15s
+"""
 
 from __future__ import annotations
 
@@ -10,103 +17,95 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from shared.rates import (
-    TEACHING_ADC_DELTA_MV,
-    TEACHING_ADC_MIN_PUB_MS,
-    TEACHING_ADC_SAMPLE_MS,
-    TEACHING_BTN_SAMPLE_MS,
-    TEACHING_PERIODIC_MS,
-)
-from shared.sensor_ids import ALL_SENSOR_IDS, DEFAULT_MASKS, SENSOR_NAMES
+from shared.lab_helpers import connect_and_live, duration_arg
+from shared.rates import TEACHING_HMI_PERIODIC_MS, TEACHING_PERIODIC_MS
+from shared.sensor_cfg_defaults import teaching_sensor_cfg
+from shared.sensor_ids import DEFAULT_MASKS, SENSOR_ADC_POT, SENSOR_NAMES, SENSOR_SW_BTN
 from shared.session_lite import SessionLite
 
-MODE_NAMES = {0: "periodic", 1: "on_change", 2: "hybrid"}
+
+def _parse_focus() -> int:
+    if "--focus" in sys.argv:
+        i = sys.argv.index("--focus")
+        if i + 1 < len(sys.argv):
+            return int(sys.argv[i + 1])
+    return 0
 
 
-def _row(cfg: dict) -> str:
-    sid = cfg["sensor_id"]
-    name = SENSOR_NAMES.get(sid, "?")
-    mode = MODE_NAMES.get(cfg.get("publish_mode", 0), str(cfg.get("publish_mode")))
-    return (
-        f"  {sid}  {name:<8}  en={int(cfg['enabled'])}  mode={mode:<10}  "
-        f"mask=0x{cfg['mask']:02X}  samp={cfg['sampling_interval_ms']}ms  "
-        f"pub={cfg['publish_interval_ms']}ms  delta={cfg.get('delta_x100', 0)}"
-    )
-
-
-def _teaching_cfg(sid: int) -> dict:
-    if sid == 4:
-        return {
-            "sensor_id": sid,
-            "enabled": True,
-            "publish_mode": 1,
-            "mask": DEFAULT_MASKS[sid],
-            "sampling_interval_ms": TEACHING_ADC_SAMPLE_MS,
-            "delta_x100": TEACHING_ADC_DELTA_MV,
-            "min_publish_interval_ms": TEACHING_ADC_MIN_PUB_MS,
-            "publish_interval_ms": 0,
-        }
-    if sid == 5:
-        return {
-            "sensor_id": sid,
-            "enabled": True,
-            "publish_mode": 1,
-            "mask": DEFAULT_MASKS[sid],
-            "sampling_interval_ms": TEACHING_BTN_SAMPLE_MS,
-            "delta_x100": 0,
-            "min_publish_interval_ms": 0,
-            "publish_interval_ms": 0,
-        }
-    return {
-        "sensor_id": sid,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": DEFAULT_MASKS[sid],
-        "sampling_interval_ms": TEACHING_PERIODIC_MS,
-        "delta_x100": 0,
-        "min_publish_interval_ms": 0,
-        "publish_interval_ms": TEACHING_PERIODIC_MS,
-    }
+def _focus_cfg(sid: int) -> list[dict]:
+    out: list[dict] = []
+    for i in range(6):
+        if i != sid:
+            out.append(
+                {
+                    "sensor_id": i,
+                    "enabled": False,
+                    "publish_mode": 0,
+                    "mask": 0,
+                    "sampling_interval_ms": 1000,
+                    "delta_x100": 0,
+                    "min_publish_interval_ms": 0,
+                    "publish_interval_ms": 0,
+                }
+            )
+            continue
+        cfg = teaching_sensor_cfg(i)
+        if i in (SENSOR_ADC_POT, SENSOR_SW_BTN):
+            cfg = {
+                **cfg,
+                "publish_mode": 0,
+                "sampling_interval_ms": TEACHING_HMI_PERIODIC_MS,
+                "publish_interval_ms": TEACHING_HMI_PERIODIC_MS,
+                "delta_x100": 0,
+                "min_publish_interval_ms": 0,
+                "mask": DEFAULT_MASKS[i],
+            }
+        else:
+            cfg = {
+                **cfg,
+                "sampling_interval_ms": TEACHING_PERIODIC_MS,
+                "publish_interval_ms": TEACHING_PERIODIC_MS,
+            }
+        out.append(cfg)
+    return out
 
 
 async def main() -> None:
-    print("Lab 05 — SENSOR_CFG for all six sensors\n")
-    print(f"Teaching rates: periodic ~{1000 // TEACHING_PERIODIC_MS} Hz (BLE-safe).\n")
+    duration = duration_arg(12.0)
+    focus = _parse_focus()
+    name = SENSOR_NAMES.get(focus, f"id={focus}")
+    print(f"Lab 05 — Focus sensor {focus} ({name}) for {duration:.0f}s")
+    print("SENSOR_CFG is fire-and-forget (no RES wait).\n")
+
+    count = 0
     session = SessionLite()
+
+    def on_sample(sample: dict) -> None:
+        nonlocal count
+        if sample["sensor_id"] != focus:
+            return
+        count += 1
+        brief = ", ".join(
+            f"{k}={v:.2f}" if isinstance(v, float) else f"{k}={v}"
+            for k, v in list(sample["fields"].items())[:6]
+        )
+        print(f"  {sample['label']:<8}  #{sample['counter']}  {brief}")
+
+    session.set_sample_handler(on_sample)
+
     try:
-        await session.connect()
-        await session.enable_notify()
-        await session.ping(attempts=3)
-        session.mute_samples(True)
-        await session.quiet_for_config()
+        await connect_and_live(session)
+        await session.apply_cfgs_fire(_focus_cfg(focus))
+        await asyncio.sleep(0.4)
+        print(f"Listening for {name} only...\n")
+        await asyncio.sleep(duration)
 
-        print("GET (current):\n")
-        ok_get = 0
-        ok_set = 0
-        for sid in ALL_SENSOR_IDS:
-            try:
-                cfg = await session.sensor_cfg_get(sid)
-                print(_row(cfg))
-                ok_get += 1
-            except Exception as exc:
-                print(f"  {sid}  GET failed: {exc}")
-
-        print("\nSET teaching defaults (BLE-safe)…\n")
-        for sid in ALL_SENSOR_IDS:
-            try:
-                echoed = await session.sensor_cfg_set(_teaching_cfg(sid))
-                print(_row(echoed))
-                ok_set += 1
-            except Exception as exc:
-                print(f"  {sid}  SET failed: {exc}")
-
-        print("\nFill the passport in docs/SENSOR_CATALOG.md.")
-        print(f"GET ok {ok_get}/6 · SET ok {ok_set}/6")
-        if ok_set < 6:
-            print("FAIL: not all SENSOR_CFG_SET succeeded.")
+        print(f"\nSamples for {name}: {count}")
+        if count == 0:
+            print("FAIL: no EVT for focused sensor.")
             raise SystemExit(1)
-        print("SUCCESS — configs for 0–5 exercised.")
-        print("Next: Lab 06 (IMU + env stream) or 07/08 (pots / buttons)")
+        print("SUCCESS — focused stream OK.")
+        print("Next: Lab 06 (IMU+env) / 07 (pots) / 08 (buttons)")
     finally:
         await session.disconnect()
 

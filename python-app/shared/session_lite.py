@@ -9,6 +9,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# Flet-less, but WinRT still needs STA when a GUI host exists; safe no-op elsewhere.
+try:
+    from bleak.backends.winrt.util import allow_sta
+
+    allow_sta()
+except ImportError:
+    pass
+
 from bleak import BleakClient
 from bleak.exc import BleakDeviceNotFoundError, BleakError
 
@@ -54,8 +62,8 @@ class PendingReq:
 class SessionLite:
     """Connect, ATT helpers, and BS2 REQ/RES + EVT delivery."""
 
-    scan_timeout_s: float = 8.0
-    post_notify_settle_s: float = 0.35
+    scan_timeout_s: float = 10.0
+    post_notify_settle_s: float = 0.5
     _client: BleakClient | None = field(default=None, repr=False)
     _reassembler: Bs2BleChunkReassembler = field(default_factory=Bs2BleChunkReassembler, repr=False)
     _pending: dict[int, PendingReq] = field(default_factory=dict, repr=False)
@@ -65,6 +73,8 @@ class SessionLite:
     _on_sample: Callable[[dict], None] | None = field(default=None, repr=False)
     _on_raw_notify: Callable[[bytes], None] | None = field(default=None, repr=False)
     _samples_muted: bool = field(default=False, repr=False)
+    _notify_enabled: bool = field(default=False, repr=False)
+    _touched_sensor_cfg: bool = field(default=False, repr=False)
     _last_counter: dict[int, int] = field(default_factory=dict, repr=False)
     _seen_evt: dict[int, set[int]] = field(default_factory=dict, repr=False)
     device_name: str = ""
@@ -86,41 +96,88 @@ class SessionLite:
         """Drop EVT delivery to the sample handler (keeps RES matching)."""
         self._samples_muted = muted
 
-    async def quiet_for_config(self) -> None:
-        """Turn off BLE TX_EVT so SENSOR_CFG REQ/RES is not starved."""
-        try:
-            await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT, timeout=8.0)
-            await asyncio.sleep(0.35)
-        except Exception as exc:
-            print(f"warn: quiet policy: {exc}")
+    async def write_req_fire(self, cmd_id: int, body: bytes = b"") -> None:
+        """Write Command a BS2 REQ — do not wait for RES (WinRT-safe)."""
+        req_id = self._next_req_id
+        self._next_req_id = (self._next_req_id + 1) & 0xFFFF or 1
+        wire = encode_bs_req(req_id, cmd_id, body)
+        await self.write_rx(wire, with_response=False)
 
-    async def scan_first(self, timeout: float | None = None) -> object:
+    async def go_live(self, *, settle_s: float = 0.8) -> None:
+        """EVT-first bring-up: enable BS_TX notify. No PING / no RES wait.
+
+        Firmware arms TX_EVT on CCCD rising edge. Do not fire POLICY_SET here —
+        that Write can stall the WinRT notify pipe; CCCD auto-arm is enough.
+        """
+        if not self._notify_enabled:
+            await self.enable_notify()
+        self._samples_muted = False
+        await asyncio.sleep(settle_s)
+        print("Live: BS_TX notify on (TX_EVT via CCCD)")
+
+    async def apply_cfgs_fire(self, cfgs: list[dict], *, gap_s: float = 0.05) -> None:
+        """Push SENSOR_CFG_SET without waiting for RES."""
+        from .decode import encode_sensor_cfg_body
+
+        for cfg in cfgs:
+            await self.write_req_fire(BS_CMD_SENSOR_CFG_SET, encode_sensor_cfg_body(cfg))
+            self._touched_sensor_cfg = True
+            await asyncio.sleep(gap_s)
+
+    async def quiet_for_config(self) -> None:
+        """Turn off BLE TX_EVT (fire-and-forget). Optional — advanced labs only."""
+        if not self._notify_enabled:
+            await self.enable_notify()
+        await self.write_req_fire(BS_CMD_BLE_POLICY_SET, bytes((BLE_POLICY_BOOT_DEFAULT,)))
+        await asyncio.sleep(0.4)
+
+    async def scan_first(self, timeout: float | None = None, *, attempts: int = 3) -> object:
         timeout = self.scan_timeout_s if timeout is None else timeout
-        print(f"Scanning for {BS2_BLE_ADV_NAME_PREFIX}* ({timeout:.0f}s)…")
-        ranked = await gatt_ops.scan_tesaiot(timeout_s=timeout)
-        if not ranked:
-            raise RuntimeError(
-                f"No device advertising name {BS2_BLE_ADV_NAME_PREFIX}* — "
-                "check TFT soft-blue and that no other central is connected."
-            )
-        device, rssi = ranked[0]
-        print(f"  pick {getattr(device, 'name', None)}  {getattr(device, 'address', '')}  rssi={rssi}")
-        return device
+        last_err: Exception | None = None
+        for attempt in range(max(1, attempts)):
+            print(f"Scanning for {BS2_BLE_ADV_NAME_PREFIX}* ({timeout:.0f}s)…")
+            try:
+                ranked = await gatt_ops.scan_tesaiot(timeout_s=timeout)
+            except Exception as exc:
+                last_err = exc
+                ranked = []
+            if ranked:
+                device, rssi = ranked[0]
+                print(
+                    f"  pick {getattr(device, 'name', None)}  "
+                    f"{getattr(device, 'address', '')}  rssi={rssi}"
+                )
+                return device
+            if attempt + 1 < attempts:
+                wait_s = 5.0 + 3.0 * attempt
+                print(f"  no advert yet — waiting {wait_s:.0f}s for ADV resume…")
+                await asyncio.sleep(wait_s)
+        raise RuntimeError(
+            f"No device advertising name {BS2_BLE_ADV_NAME_PREFIX}* — "
+            "press the board RESET (TFT should return soft-blue), "
+            "close other BLE apps, then retry."
+            + (f" ({last_err!r})" if last_err else "")
+        )
 
     async def connect(self, device: object | None = None) -> None:
         last_exc: Exception | None = None
-        for attempt in range(4):
+        for attempt in range(5):
             try:
                 if device is None or attempt > 0:
                     if attempt > 0:
-                        print(f"  connect retry {attempt + 1}/4…")
-                        # Failed connects often leave a ghost peripheral link;
-                        # CM33 abandoned recovery is ~5s — wait it out.
-                        await asyncio.sleep(8.0)
-                    device = await self.scan_first()
+                        # WinRT TimeoutError often kills peripheral ADV without
+                        # CONNECTION_DOWN. CM33 idle force-refresh is ~20s;
+                        # ghost links may need a manual RESET.
+                        wait_s = 12.0 + 4.0 * (attempt - 1)
+                        print(
+                            f"  connect retry {attempt + 1}/5 — "
+                            f"waiting {wait_s:.0f}s for ADV (or press RESET)…"
+                        )
+                        await asyncio.sleep(wait_s)
+                    device = await self.scan_first(attempts=4 if attempt > 0 else 3)
                 kwargs: dict = {
                     "disconnected_callback": self._on_ble_disconnected,
-                    "timeout": 30.0,
+                    "timeout": 45.0,
                 }
                 # WinRT: avoid stale GATT cache after MCU reboot
                 if sys.platform == "win32":
@@ -132,12 +189,16 @@ class SessionLite:
             except (
                 OSError,
                 asyncio.TimeoutError,
+                TimeoutError,
                 BleakDeviceNotFoundError,
                 BleakError,
                 asyncio.CancelledError,
+                RuntimeError,
             ) as exc:
-                last_exc = exc if not isinstance(exc, asyncio.CancelledError) else TimeoutError(str(exc))
-                print(f"  connect attempt {attempt + 1}/4 failed: {type(exc).__name__}: {exc}")
+                last_exc = (
+                    exc if not isinstance(exc, asyncio.CancelledError) else TimeoutError(str(exc))
+                )
+                print(f"  connect attempt {attempt + 1}/5 failed: {type(exc).__name__}: {exc}")
                 if self._client is not None:
                     try:
                         await self._client.disconnect()
@@ -146,47 +207,79 @@ class SessionLite:
                     self._client = None
                 device = None  # force re-scan
         if last_exc is not None or self._client is None:
-            raise last_exc or RuntimeError("connect failed")
+            hint = (
+                "\nHint: after a WinRT connect timeout the board often stops advertising. "
+                "Press RESET once (wait for soft-blue), then re-run the lab."
+            )
+            if isinstance(last_exc, RuntimeError):
+                raise RuntimeError(str(last_exc) + hint) from last_exc
+            raise RuntimeError(f"connect failed: {last_exc!r}{hint}") from last_exc
 
         self._notify_loop = asyncio.get_running_loop()
         self.device_name = getattr(device, "name", None) or "TESAIoT"
         self.device_address = getattr(device, "address", "") or ""
         print(f"Connected: {self.device_name} ({self.device_address})")
-        # WinRT: services can lag the connect ACK — settle before CCCD/notify.
-        await asyncio.sleep(0.5)
-        get_services = getattr(self._client, "get_services", None)
-        if callable(get_services):
-            try:
-                await get_services()
-            except Exception:
-                pass
+        await self._wait_bs2_gatt_ready()
+
+    async def _wait_bs2_gatt_ready(self, timeout_s: float = 12.0) -> None:
+        """WinRT sometimes returns from connect before BS2 chars/CCCD are visible."""
+        deadline = time.perf_counter() + timeout_s
+        last_exc: Exception | None = None
+        while time.perf_counter() < deadline:
+            client = self._client
+            if client is None or not client.is_connected:
+                raise RuntimeError("disconnected while waiting for GATT")
+            get_services = getattr(client, "get_services", None)
+            if callable(get_services):
+                try:
+                    await get_services()
+                except Exception as exc:
+                    last_exc = exc
+            char = client.services.get_characteristic(BS2_BLE_CHAR_BS_TX_UUID)
+            if char is not None and any(
+                str(desc.uuid).lower() == "00002902-0000-1000-8000-00805f9b34fb"
+                or str(desc.uuid).lower().endswith("2902")
+                for desc in char.descriptors
+            ):
+                await asyncio.sleep(0.15)
+                return
+            await asyncio.sleep(0.25)
+        raise RuntimeError(
+            "BS_TX / CCCD not ready after connect"
+            + (f" ({last_exc!r})" if last_exc else "")
+        )
 
     async def enable_notify(self) -> None:
         await gatt_ops.enable_tx_notify(self.client, self._on_notify)
+        self._notify_enabled = True
         await asyncio.sleep(self.post_notify_settle_s)
 
     async def restore_teaching_sensors(self) -> None:
         """Re-enable all six sensors so TFT / UART keep updating after a focused lab."""
+        if not self._notify_enabled:
+            await self.enable_notify()
         self.mute_samples(True)
         await self.quiet_for_config()
         for cfg in teaching_sensor_cfgs():
             try:
-                await self.sensor_cfg_set(cfg, timeout=6.0, attempts=2)
+                await self.sensor_cfg_set(cfg, timeout=4.0, attempts=1)
             except Exception:
                 pass
         self.mute_samples(False)
 
     async def disconnect(self) -> None:
         client = self._client
-        # Restore multi-sensor CFG before tear-down (lab 07/08 disable siblings).
-        if client is not None and client.is_connected:
+        had_link = client is not None and bool(getattr(client, "is_connected", False))
+        # Only restore CFG when a lab changed it (07/08). Needs CCCD for RES.
+        if had_link and self._touched_sensor_cfg:
             try:
                 await self.restore_teaching_sensors()
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"warn: restore teaching sensors: {exc}")
             try:
-                await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT, timeout=4.0)
-                await asyncio.sleep(0.3)
+                if self._notify_enabled:
+                    await self.set_ble_policy(BLE_POLICY_BOOT_DEFAULT, timeout=3.0)
+                    await asyncio.sleep(0.2)
             except Exception:
                 pass
         self._client = None
@@ -194,6 +287,8 @@ class SessionLite:
         self._reassembler.reset()
         self._seen_evt.clear()
         self._last_counter.clear()
+        self._notify_enabled = False
+        self._touched_sensor_cfg = False
         if client is not None:
             try:
                 if client.is_connected:
@@ -205,8 +300,9 @@ class SessionLite:
             except Exception:
                 pass
         # WinRT / stack needs a beat before the peripheral re-advertises.
-        await asyncio.sleep(3.0)
-        print("Disconnected")
+        await asyncio.sleep(2.0)
+        if had_link:
+            print("Disconnected")
 
     def _on_ble_disconnected(self, _client: BleakClient) -> None:
         self._reject_pending("link lost")
@@ -272,6 +368,7 @@ class SessionLite:
                 if res[2] != 0:
                     raise RuntimeError(f"SENSOR_CFG_SET id={cfg.get('sensor_id')} status={res[2]}")
                 echoed = decode_sensor_cfg_body(res[3]) if res[3] else cfg
+                self._touched_sensor_cfg = True
                 return echoed or cfg
             except Exception as exc:
                 last_exc = exc
@@ -304,7 +401,16 @@ class SessionLite:
                 pending.future.set_exception(RuntimeError(reason))
         self._pending.clear()
 
-    def _on_notify(self, _handle: int, data: bytearray) -> None:
+    def _on_notify(self, *args) -> None:
+        # Bleak 0.22: (handle, data). Bleak 3: (characteristic, data). Some backends: (data,).
+        if not args:
+            return
+        data = args[-1]
+        if not isinstance(data, (bytes, bytearray)):
+            return
+        if len(data) == 0:
+            # WinRT occasionally delivers empty ValueChanged — ignore.
+            return
         if self._notify_loop is None or self._notify_loop.is_closed():
             return
         chunk = bytes(data)
@@ -313,6 +419,13 @@ class SessionLite:
                 self._on_raw_notify(chunk)
             except Exception:
                 pass
+        try:
+            running = asyncio.get_running_loop()
+        except RuntimeError:
+            running = None
+        if running is self._notify_loop:
+            self._notify_loop.create_task(self._handle_notify_chunk(chunk))
+            return
         try:
             asyncio.run_coroutine_threadsafe(self._handle_notify_chunk(chunk), self._notify_loop)
         except RuntimeError:

@@ -31,7 +31,7 @@ async def main() -> None:
         print(f"  {gatt_ops.format_link_snapshot(raw)}")
         print()
         print("SUCCESS — connected and Read completed.")
-        print("Next: Lab 03 (Write Request / Write Command / Notify)")
+        print("Next: Lab 03 (go live — first sensor notifies)")
     finally:
         await session.disconnect()
 

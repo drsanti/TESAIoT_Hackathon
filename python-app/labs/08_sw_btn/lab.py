@@ -11,17 +11,18 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from shared.decode import format_sw_btn_state
+from shared.lab_helpers import connect_and_live, duration_arg, flag
 from shared.rates import TEACHING_BTN_SAMPLE_MS, TEACHING_HMI_PERIODIC_MS
 from shared.sensor_ids import DEFAULT_MASKS, SENSOR_SW_BTN
 from shared.session_lite import SessionLite
 
 
 async def main() -> None:
-    duration = float(sys.argv[1]) if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else 20.0
-    force_periodic = "--periodic" in sys.argv
+    duration = duration_arg(20.0)
+    force_periodic = flag("--periodic")
     mode = 0 if force_periodic else 1
     print(
-        f"Lab 08 — SW_BTN ({duration:.0f}s) — press BTN0–BTN2"
+        f"Lab 08 — SW_BTN ({duration:.0f}s) — press BTN0-BTN2"
         + (" [periodic smoke]" if force_periodic else " [on_change]")
         + "\n"
     )
@@ -50,16 +51,12 @@ async def main() -> None:
     session.set_sample_handler(on_sample)
 
     try:
-        await session.connect()
-        await session.enable_notify()
-        await session.ping(attempts=3)
+        await connect_and_live(session)
 
-        session.mute_samples(True)
-        await session.quiet_for_config()
-
+        cfgs = []
         for sid in range(6):
             enabled = sid == SENSOR_SW_BTN
-            await session.sensor_cfg_set(
+            cfgs.append(
                 {
                     "sensor_id": sid,
                     "enabled": enabled,
@@ -72,25 +69,23 @@ async def main() -> None:
                     ),
                     "delta_x100": 0,
                     "min_publish_interval_ms": 0,
-                    "publish_interval_ms": TEACHING_HMI_PERIODIC_MS if (enabled and force_periodic) else 0,
+                    "publish_interval_ms": (
+                        TEACHING_HMI_PERIODIC_MS if (enabled and force_periodic) else 0
+                    ),
                 }
             )
+        await session.apply_cfgs_fire(cfgs)
+        await asyncio.sleep(0.3)
 
-        try:
-            await session.enable_streaming_policy()
-        except Exception as exc:
-            print(f"warn: BLE_POLICY_SET: {exc}")
-            session.mute_samples(False)
-
-        print("Listening for button events…\n")
+        print("Listening for button events...\n")
         await asyncio.sleep(duration)
 
         print(f"\nSamples received: {count}")
         if count == 0:
-            print("FAIL: no SW_BTN EVT — press a button, check mask/policy.")
+            print("FAIL: no SW_BTN EVT — press a button (or use --periodic).")
             raise SystemExit(1)
-        print("SUCCESS — button state/counts decoded.")
-        print("Next: Lab 09 (multi-sensor mini-app)")
+        print("SUCCESS — button EVTs decoded.")
+        print("Next: Lab 09 (multi-sensor)")
     finally:
         await session.disconnect()
 

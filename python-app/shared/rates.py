@@ -1,7 +1,7 @@
 """BLE-safe SENSOR_CFG timing for teaching labs.
 
 Aggressive rates (tens of Hz on many sensors) can flood CM33 GATT/IPC and
-freeze the TFT (WDT). Match ble-flet ``labQuiet`` (~1 Hz) for periodic sensors.
+freeze the TFT (WDT). Use ~1 Hz for periodic sensors in teaching labs.
 On-change HMI sensors may sample faster; they only notify when values change.
 """
 

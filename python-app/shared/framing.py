@@ -1,4 +1,4 @@
-"""BS2 wire + ATT chunk reassembly — teaching copies from ble-flet."""
+"""BS2 wire + ATT chunk reassembly — teaching copies for the labs."""
 
 from __future__ import annotations
 

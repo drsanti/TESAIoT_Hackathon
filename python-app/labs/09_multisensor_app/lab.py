@@ -12,14 +12,10 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from shared.decode import format_sw_btn_state
-from shared.rates import (
-    TEACHING_ADC_DELTA_MV,
-    TEACHING_ADC_MIN_PUB_MS,
-    TEACHING_ADC_SAMPLE_MS,
-    TEACHING_BTN_SAMPLE_MS,
-    TEACHING_PERIODIC_MS,
-)
-from shared.sensor_ids import ALL_SENSOR_IDS, DEFAULT_MASKS, SENSOR_NAMES, SENSOR_ADC_POT, SENSOR_SW_BTN
+from shared.lab_helpers import connect_and_live, duration_arg
+from shared.rates import TEACHING_PERIODIC_MS
+from shared.sensor_cfg_defaults import teaching_sensor_cfgs
+from shared.sensor_ids import ALL_SENSOR_IDS, SENSOR_NAMES, SENSOR_ADC_POT, SENSOR_SW_BTN
 from shared.session_lite import SessionLite
 
 
@@ -35,45 +31,10 @@ def _fmt_fields(sid: int, fields: dict) -> str:
     )
 
 
-def _cfg(sid: int) -> dict:
-    if sid == SENSOR_ADC_POT:
-        return {
-            "sensor_id": sid,
-            "enabled": True,
-            "publish_mode": 1,
-            "mask": DEFAULT_MASKS[sid],
-            "sampling_interval_ms": TEACHING_ADC_SAMPLE_MS,
-            "delta_x100": TEACHING_ADC_DELTA_MV,
-            "min_publish_interval_ms": TEACHING_ADC_MIN_PUB_MS,
-            "publish_interval_ms": 0,
-        }
-    if sid == SENSOR_SW_BTN:
-        return {
-            "sensor_id": sid,
-            "enabled": True,
-            "publish_mode": 1,
-            "mask": DEFAULT_MASKS[sid],
-            "sampling_interval_ms": TEACHING_BTN_SAMPLE_MS,
-            "delta_x100": 0,
-            "min_publish_interval_ms": 0,
-            "publish_interval_ms": 0,
-        }
-    return {
-        "sensor_id": sid,
-        "enabled": True,
-        "publish_mode": 0,
-        "mask": DEFAULT_MASKS[sid],
-        "sampling_interval_ms": TEACHING_PERIODIC_MS,
-        "delta_x100": 0,
-        "min_publish_interval_ms": 0,
-        "publish_interval_ms": TEACHING_PERIODIC_MS,
-    }
-
-
 async def main() -> None:
-    duration = float(sys.argv[1]) if len(sys.argv) > 1 else 30.0
+    duration = duration_arg(30.0)
     print(f"Lab 09 — multi-sensor mini-app ({duration:.0f}s)")
-    print(f"IMU/env ~{1000 // TEACHING_PERIODIC_MS} Hz; pots/buttons on_change (BLE-safe).\n")
+    print(f"IMU/env ~{1000 // TEACHING_PERIODIC_MS} Hz; pots/buttons on_change.\n")
 
     latest: dict[int, dict] = {}
     session = SessionLite()
@@ -84,21 +45,10 @@ async def main() -> None:
     session.set_sample_handler(on_sample)
 
     try:
-        await session.connect()
-        await session.enable_notify()
-        await session.ping(attempts=3)
-
-        session.mute_samples(True)
-        await session.quiet_for_config()
-
-        for sid in ALL_SENSOR_IDS:
-            await session.sensor_cfg_set(_cfg(sid))
-
-        try:
-            await session.enable_streaming_policy()
-        except Exception as exc:
-            print(f"warn: BLE_POLICY_SET: {exc}")
-            session.mute_samples(False)
+        await connect_and_live(session)
+        # Teaching defaults already on device; refresh fire-and-forget.
+        await session.apply_cfgs_fire(teaching_sensor_cfgs())
+        await asyncio.sleep(0.3)
 
         print("Live dashboard (move / turn pots / press buttons). Ctrl+C to stop early.\n")
         end = time.monotonic() + duration
@@ -111,22 +61,24 @@ async def main() -> None:
                     name = SENSOR_NAMES[sid]
                     sample = latest.get(sid)
                     if sample is None:
-                        print(f"  {name:<8}  (waiting…)")
+                        print(f"  {name:<8}  (waiting...)")
                     else:
-                        print(f"  {name:<8}  #{sample['counter']}  {_fmt_fields(sid, sample['fields'])}")
+                        print(
+                            f"  {name:<8}  #{sample['counter']}  "
+                            f"{_fmt_fields(sid, sample['fields'])}"
+                        )
                 print("-" * 60)
                 await asyncio.sleep(0.5)
         except KeyboardInterrupt:
             print("\nInterrupted.")
 
-        missing = [SENSOR_NAMES[s] for s in ALL_SENSOR_IDS if s not in latest]
-        if missing:
-            print(f"Note: no samples yet for: {', '.join(missing)}")
-        if len(latest) == 0:
-            print("FAIL: no samples at all.")
+        got = sum(1 for sid in ALL_SENSOR_IDS if sid in latest)
+        print(f"\nSensors seen: {got}/6")
+        if got == 0:
+            print("FAIL: no samples.")
             raise SystemExit(1)
-        print(f"SUCCESS — received {len(latest)}/6 sensor families.")
-        print("Next: Lab 10 (your app template)")
+        print("SUCCESS — dashboard received live EVTs.")
+        print("Next: Lab 10 (your app)")
     finally:
         await session.disconnect()
 

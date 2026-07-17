@@ -24,7 +24,7 @@ async def main() -> None:
     if not matches:
         print("FAIL: no TESAIoT-* advertisement found.")
         print("  - Check power / firmware / BLE module profile")
-        print("  - Disconnect other centrals (ble-flet, nRF Connect)")
+        print("  - Disconnect other centrals (nRF Connect, phones, other labs)")
         sys.exit(1)
 
     print(f"Found {len(matches)} device(s):\n")
@@ -36,6 +36,7 @@ async def main() -> None:
 
     print("SUCCESS — advertising visible.")
     print("Next: Lab 02 (connect + read BS_LINK)")
+    print("Tip: if a later connect times out and ADV vanishes, press board RESET.")
 
 
 if __name__ == "__main__":

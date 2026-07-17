@@ -16,7 +16,7 @@ from .gatt_ids import (
     matches_bs2_ble_name,
 )
 
-NotifyCallback = Callable[[int, bytearray], None]
+NotifyCallback = Callable[..., None]
 
 
 async def scan_tesaiot(*, timeout_s: float = 8.0) -> list[tuple[object, int]]:
@@ -86,13 +86,17 @@ async def write_rx(client: BleakClient, data: bytes, *, with_response: bool) -> 
 
 
 async def enable_tx_notify(client: BleakClient, callback: NotifyCallback) -> None:
-    """Enable BS_TX notify; retry if WinRT returns before services are ready."""
+    """Enable BS_TX notify; retry if WinRT returns before notify is usable.
+
+    Note: on some WinRT stacks, reading the CCCD descriptor still returns 0x0000
+    after a successful start_notify while ValueChanged already fires. Prefer a
+    short notify-probe over trusting CCCD alone.
+    """
     last_exc: Exception | None = None
-    for attempt in range(4):
+    for attempt in range(5):
         try:
             if attempt > 0:
                 await asyncio.sleep(0.6 * attempt)
-                # Force a fresh GATT table — WinRT often connects with an empty cache.
                 get_services = getattr(client, "get_services", None)
                 if callable(get_services):
                     await get_services()
@@ -104,7 +108,16 @@ async def enable_tx_notify(client: BleakClient, callback: NotifyCallback) -> Non
                 char = client.services.get_characteristic(BS2_BLE_CHAR_BS_TX_UUID)
             if char is None:
                 raise LookupError(f"BS_TX {BS2_BLE_CHAR_BS_TX_UUID} missing after connect")
+            try:
+                await client.stop_notify(BS2_BLE_CHAR_BS_TX_UUID)
+            except Exception:
+                pass
             await client.start_notify(BS2_BLE_CHAR_BS_TX_UUID, callback)
+            await asyncio.sleep(0.25)
+            cccd = await read_cccd(client, BS2_BLE_CHAR_BS_TX_UUID)
+            if cccd is not None and len(cccd) >= 1 and (cccd[0] & 0x01):
+                return
+            # CCCD read unreliable on WinRT — treat successful start_notify as OK.
             return
         except Exception as exc:
             last_exc = exc

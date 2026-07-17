@@ -20,6 +20,7 @@ hex/AGENT.md
 vsix/BUILD.txt
 vsix/AGENT.md
 flasher/BUILD.txt
+ide/BUILD.txt
 
 # Python
 __pycache__/

@@ -1,7 +1,36 @@
 /**
- * Shared helpers for Bitstream Studio TESAIoT_Hackathon examples (ex01–ex08).
+ * Shared helpers for Bitstream Studio TESAIoT_Hackathon examples (ex01–ex08, ex16–ex17).
  * Import this module from sibling HTML pages for SDK load + UI helpers.
  */
+
+/** ADC_POT field keys (POT1…POT4 millivolts). */
+export const ADC_POT_KEYS = ['pot1Mv', 'pot2Mv', 'pot3Mv', 'pot4Mv'];
+
+/** Deck-matching pot fill colors (AdcPotDataViewer). */
+export const ADC_POT_COLORS = ['#38BDF8', '#A78BFA', '#FBBF24', '#34D399'];
+
+/**
+ * SW_BTN silk labels + mask bits (SwBtnDataViewer / SW_BTN_BS2).
+ * state bit 0x01=SW0, 0x02=SW5, 0x04=SW6.
+ */
+export const SW_BTN_CHANNELS = [
+  { bit: 0x01, key: 'btn0Count', silk: 'SW0', accent: '#38BDF8' },
+  { bit: 0x02, key: 'btn1Count', silk: 'SW5', accent: '#A78BFA' },
+  { bit: 0x04, key: 'btn2Count', silk: 'SW6', accent: '#F87171' },
+];
+
+/** Lap · slot display for press counts (floor(n/100) · n%100). */
+export function formatPressLapSlot(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return '–';
+  const total = Math.max(0, Math.trunc(n));
+  return `${Math.floor(total / 100)} · ${total % 100}`;
+}
+
+/** Press-count bar fill 0–100 from count % 100. */
+export function pressSlotPct(n) {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return 0;
+  return Math.max(0, Math.trunc(n)) % 100;
+}
 
 /** Import URLs tried in order (VSIX serve → legacy alias → bundled vendor copy). */
 const SDK_IMPORT_CANDIDATES = [

@@ -1,15 +1,15 @@
 # TESAIoT Hackathon
 
-[![Release](https://img.shields.io/badge/release-v0.1.9-0B6E99?style=flat-square)](hex/firmware-manifest.json)
-[![Updated](https://img.shields.io/badge/updated-2026--07--15-2E7D32?style=flat-square)](hex/firmware-manifest.json)
-[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.1.9-5C6BC0?style=flat-square)](vsix/)
-[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.1.9-F57C00?style=flat-square)](hex/)
+[![Release](https://img.shields.io/badge/release-v0.1.11-0B6E99?style=flat-square)](hex/firmware-manifest.json)
+[![Updated](https://img.shields.io/badge/updated-2026--07--19-2E7D32?style=flat-square)](hex/firmware-manifest.json)
+[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.1.11-5C6BC0?style=flat-square)](vsix/)
+[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.1.11-F57C00?style=flat-square)](hex/)
 [![Repo](https://img.shields.io/badge/GitHub-TESAIoT__Hackathon-181717?style=flat-square&logo=github)](https://github.com/drsanti/TESAIoT_Hackathon)
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
-- **Latest release:** Bitstream Studio **0.1.9** (VSIX + matching HEX)
-- **Released:** 2026-07-15
+- **Latest release:** Bitstream Studio **0.1.11** (VSIX + matching HEX)
+- **Released:** 2026-07-19
 - **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
 
 > Prefer matching VSIX and firmware versions. When in doubt, use the **`latest`** entry in the firmware manifest.
@@ -56,7 +56,7 @@ cd TESAIoT_Hackathon
 
 ### 2. Install Bitstream Studio
 
-1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current release: **`0.1.9`**), or the version your instructor specified.
+1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current release: **`0.1.11`**), or the version your instructor specified.
 2. In VS Code or Cursor: **Extensions** → **`…`** → **Install from VSIX…** → select that file.
 3. Click **Reload** when prompted.
 4. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **Open Bitstream Studio**.
@@ -66,7 +66,7 @@ More detail: [`vsix/README.md`](vsix/README.md)
 **Optional — install from the terminal** (from the repo root; change the version if needed):
 
 ```bash
-code --install-extension vsix/bitstream-studio-0.1.9.vsix
+code --install-extension vsix/bitstream-studio-0.1.11.vsix
 code -r
 ```
 
@@ -78,7 +78,7 @@ code --uninstall-extension TERNIONDEV.bitstream-studio
 
 ### 3. Flash firmware (hardware labs)
 
-1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX (current: **`tesaiot-bitstream-0.1.9.hex`**).
+1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX (current: **`tesaiot-bitstream-0.1.11.hex`**).
 2. Flash the board with **TESAIoT Flasher** ([`flasher/`](flasher/)) or **ModusToolbox**.
 3. If no serial port appears, unplug and replug the USB cable.
 
@@ -130,6 +130,18 @@ See [`python-app/README.md`](python-app/README.md) for the lab map (scan → con
 
 **Rate tip:** keep teaching labs near **1 Hz** periodic rates (`shared/rates.py`). High multi-sensor rates over BLE can starve CM33.
 
+### Browser BLE (React / Web Bluetooth)
+
+Interactive tutorial + `@ternion/tbs-*` live in [`ble-react/`](ble-react/):
+
+```bash
+cd ble-react
+pnpm install
+pnpm dev                 # http://localhost:5174/
+```
+
+Use **system Chrome or Edge**. Follow Why → Do → Check on each chapter. On Windows, if GATT drops right after connect, pair `TESAIoT-*` in **Settings → Bluetooth**, then open `/diag` (**Run all 1→6**). Canonical notes: [`ble-react/docs/WEB_BLUETOOTH_WINDOWS.md`](ble-react/docs/WEB_BLUETOOTH_WINDOWS.md).
+
 ### Example catalog
 
 | Page                                                                  | Sensors / topic                                |
@@ -139,7 +151,9 @@ See [`python-app/README.md`](python-app/README.md) for the lab map (scan → con
 | [ex03 — BMM350](web-app/ex03_bmm350.html)                             | Magnetometer and compass                       |
 | [ex04 — BMI270 IMU](web-app/ex04_bmi270_imu.html)                     | Accelerometer and gyro                         |
 | [ex05 — BMI270 horizon](web-app/ex05_bmi270_orientation.html)         | Artificial horizon                             |
-| [ex06 — Dashboard](web-app/ex06_dashboard.html)                       | All four sensors                               |
+| [ex16 — ADC_POT](web-app/ex16_adc_pot.html)                           | POT1–POT4 millivolts                           |
+| [ex17 — SW_BTN](web-app/ex17_sw_btn.html)                             | SW0 / SW5 / SW6 state + press counts           |
+| [ex06 — Dashboard](web-app/ex06_dashboard.html)                       | All six sensors (IMU, env, pots, switches)     |
 | [ex07 — Catalog browser](web-app/ex07_catalog_browser.html)           | Browse sensor catalog                          |
 | [ex08 — Stale / route](web-app/ex08_stale_and_route.html)             | Connection status demo                         |
 | [ex09 — MQTT subscriber](web-app/ex09_mqtt_subscriber.html)           | MQTT broker smoke test (`ws://127.0.0.1:8883`) |

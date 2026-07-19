@@ -147,37 +147,34 @@ Optional local clones for spec/constants:
 
 ### Phase 4 — Web Bluetooth adapter + hardware smoke (Days 8–9)
 
-**Goal:** Real DevKit PING over BLE.
+**Goal:** Real DevKit **EVT stream** over BLE (PING optional / advanced).
 
 **Tasks:**
 
-- [ ] `apps/dashboard/src/transport/web-bluetooth.ts`
-  - Only file using `navigator.bluetooth`
+- [x] `apps/labs/src/transport/web-bluetooth.ts` (+ dashboard copy)
+  - Only app transport files use `navigator.bluetooth`
   - `requestDevice` filter `TESAIoT-`
-  - Subscribe BS_TX; write BS_RX with chunking
-- [ ] Vite HTTPS plugin or `http://localhost` for secure context
-- [ ] Minimal CLI/page: Connect → PING → log result
+  - Subscribe BS_TX; write BS_RX (Write Command default)
+- [x] Vite on `http://localhost` for secure context
+- [x] Labs 03–05: Connect → goLive (notify) → decode EVT_SENSOR
 
-**Done when:** Hardware PING returns RES status 0.
+**Done when:** Hardware shows ≥1 decoded EVT within ~10 s after go-live. (PING RES = optional advanced.)
 
 ---
 
-### Phase 5 — Dashboard UI (Days 9–12)
+### Phase 5 — Labs UI + Dashboard (Days 9–12)
 
-**Goal:** Reference app matching FR-UI requirements.
+**Goal:** Labs 01–10 catalog + reference dashboard (FR-UI).
 
 **Tasks:**
 
-- [ ] `bootstrap.ts` — compose session + UI registry
-- [ ] Zustand `session-store.ts` — subscribe to `SessionEvents`
-- [ ] `useBleSession.ts` hook
-- [ ] Pages: Connect, Live, Link, Log
-- [ ] Built-in sensor cards via `registerBuiltinSensors` UI facet
-- [ ] Scene preset chips (Motion default on connect)
-- [ ] Rate line: meas vs cfg
-- [ ] Live update throttle (~4 Hz) + toggle
+- [x] `apps/labs` catalog routes `/labs/01` … `/labs/10` + shared `useBleSession`
+- [x] Sensor cards (IMU/env/pots/buttons) + Lab 09 multi board
+- [x] `apps/dashboard` pages: Connect, Live, Link, Log
+- [ ] Scene preset chips / rate line / 4 Hz throttle — polish backlog
+- [ ] Addon registry bootstrap — after labs (Phase 6)
 
-**Done when:** Hardware smoke checklist (§4) passes.
+**Done when:** EVT-first hardware smoke in [REQUIREMENTS.md](./REQUIREMENTS.md) §6 passes; see [LABS.md](./LABS.md).
 
 ---
 

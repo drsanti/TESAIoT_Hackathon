@@ -1,0 +1,22 @@
+{
+  "name": "ble-react",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TESAIoT BLE teaching labs + @ternion/tbs-* packages (Web Bluetooth)",
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" run build && pnpm --filter @ternion/tbs-labs run build && pnpm --filter @ternion/tbs-dashboard-demo run build",
+    "dev": "pnpm --filter @ternion/tbs-labs dev",
+    "dev:dashboard": "pnpm --filter @ternion/tbs-dashboard-demo dev",
+    "bridge": "npm --prefix tools/ble-bridge start",
+    "bridge:install": "npm --prefix tools/ble-bridge install",
+    "test": "pnpm -r --filter \"./packages/*\" run test",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.11.0",
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
+  }
+}

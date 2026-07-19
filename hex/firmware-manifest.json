@@ -1,7 +1,14 @@
 {
   "channel": "stable",
-  "latest": "0.1.10",
+  "latest": "0.1.11",
   "firmware": [
+    {
+      "version": "0.1.11",
+      "file": "tesaiot-bitstream-0.1.11.hex",
+      "size": 5606053,
+      "date": "2026-07-19",
+      "notes": "Bitstream Studio 0.1.11 — host Wi-Fi/BLE UI gated off; BMI270 hybrid default; stream policy toolbar; live stream budget; HMI brand v0.1.11"
+    },
     {
       "version": "0.1.10",
       "file": "tesaiot-bitstream-0.1.10.hex",

@@ -41,11 +41,12 @@ v1 focuses on **BLE via Web Bluetooth**. The SDK architecture must support **Web
 |----|-------------|----------|
 | FR-PROTO-1 | BS2 frames use the same `BS ` envelope + CRC16-CCITT as UART (per BS2 spec) | P0 |
 | FR-PROTO-2 | BLE path uses ATT chunk envelope v1 before BS2 frame reassembly | P0 |
-| FR-PROTO-3 | REQ/RES correlation by `reqId`; PING returns RES status 0 | P0 |
-| FR-PROTO-4 | Decode `EVT_SENSOR` for SHT40, DPS368, BMM350, BMI270 | P0 |
-| FR-PROTO-5 | `BLE_POLICY_SET` with flags `0x07` (ADV + TX_EVT + RX_REQ) enables sensor stream | P0 |
+| FR-PROTO-3 | REQ/RES correlation by `reqId`; PING returns RES status 0 | P2 (advanced teaching; not required for lab acceptance) |
+| FR-PROTO-4 | Decode `EVT_SENSOR` for SHT40, DPS368, BMM350, BMI270, ADC_POT, SW_BTN | P0 |
+| FR-PROTO-5 | Teaching stream = BS_TX notify (CCCD arms `TX_EVT`). Dashboard / hybrid helpers also run `enableStreaming` → `BLE_POLICY_SET` **0x07** heal (soft-fail if EVTs already flowing) | P0 (notify/CCCD); POLICY heal = P1 |
 | FR-PROTO-6 | Read BS_LINK snapshot (MTU, connection state, tx_drops) | P1 |
-| FR-PROTO-7 | Apply sensor scene presets (Motion / Realtime / Lab Quiet) via SENSOR_CFG | P1 |
+| FR-PROTO-7 | Apply SENSOR_CFG via fire-and-forget Write Command (no RES wait for teaching) | P1 |
+| FR-PROTO-8 | Apply sensor scene presets (Motion / Realtime / Lab Quiet) via SENSOR_CFG | P2 |
 
 ### 3.3 Dashboard UI (FR-UI)
 
@@ -53,7 +54,7 @@ v1 focuses on **BLE via Web Bluetooth**. The SDK architecture must support **Web
 |----|-------------|----------|
 | FR-UI-1 | **Connect** screen: prerequisites checklist + Connect button | P0 |
 | FR-UI-2 | **Live** screen: four sensor cards with latest values | P0 |
-| FR-UI-3 | **Link** screen: PING, Stream on/off, link stats, scene preset chips | P1 |
+| FR-UI-3 | **Link** screen: PING, POLICY 0x07 heal, Stream on/off, link stats, scene preset chips | P1 |
 | FR-UI-4 | **Log** screen: timestamped session diagnostics; copy to clipboard | P1 |
 | FR-UI-5 | Rate line per sensor: `meas` (counter ÷ MCU `deviceMs`) vs `cfg` (SENSOR_CFG) | P1 |
 | FR-UI-6 | Throttle Live UI updates (~4 Hz default); optional “update on every EVT” toggle | P2 |
@@ -84,7 +85,7 @@ v1 focuses on **BLE via Web Bluetooth**. The SDK architecture must support **Web
 | ID | Requirement |
 |----|-------------|
 | NFR-ARCH-1 | **Protocol layer** (`tbs-core`) has zero dependency on BLE APIs, React, or `navigator.*` |
-| NFR-ARCH-2 | **Only** `apps/dashboard/src/transport/web-bluetooth.ts` may call `navigator.bluetooth` |
+| NFR-ARCH-2 | **Only** `apps/*/src/transport/web-bluetooth.ts` (labs + dashboard) may call `navigator.bluetooth` |
 | NFR-ARCH-3 | Import boundaries enforced (ESLint / package `exports`) — no upward imports |
 | NFR-ARCH-4 | Session logic testable with fake in-memory transport (no hardware in unit tests) |
 
@@ -128,20 +129,22 @@ v1 focuses on **BLE via Web Bluetooth**. The SDK architecture must support **Web
 
 ## 6. Acceptance criteria (v1 done)
 
-### Hardware smoke (manual)
+### Hardware smoke (manual) — EVT-first
 
-1. **Connect** → PING → RES status 0 within timeout.
-2. **Stream on** → all four Live cards update within 10 s.
-3. **Motion preset** → BMI270 `meas` within ±25% of `cfg` for 30 s soak.
-4. **Disconnect** → reconnect works; no stuck GATT from prior session.
-5. Only one central connected (ble-flet / nRF Connect disconnected).
+1. **Connect** → GATT linked; BS_LINK readable.
+2. **Go live / Stream on** → ≥1 decoded `EVT_SENSOR` within ~10 s (IMU/env).
+3. **Continuous** → counters increase over 15 s; Lab 09 / dashboard six cards update.
+4. **Disconnect** → reconnect works; after failed connect press board **RESET** if ADV vanished.
+5. Only one central connected (python-app / nRF Connect / other tabs disconnected).
+
+Optional advanced: PING RES status 0; explicit POLICY write.
 
 ### Automated (CI)
 
 1. `pnpm --filter @ternion/tbs-core test` — CRC goldens, chunk reassembly, EVT decode.
-2. `pnpm --filter @ternion/tbs-ble-session test` — fake transport PING + stream policy encode path.
-3. `pnpm --filter @ternion/tbs-addon-kit test` — `defineTbsAddon` + `composeSession` ordering.
-4. `pnpm build` — all packages emit `dist/` without TypeScript errors.
+2. `pnpm --filter @ternion/tbs-ble-session test` — fake transport goLive + EVT path.
+3. `pnpm --filter @ternion/tbs-addon-kit test` — deferred until addon-kit lands (not blocking labs).
+4. `pnpm build` — packages + apps emit without TypeScript errors.
 
 ---
 

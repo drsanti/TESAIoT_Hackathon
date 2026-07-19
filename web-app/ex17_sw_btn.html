@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex17 — SW_BTN Switches</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>SW_BTN — Switches</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <p class="note">
+    Wire <code>sensorId=5</code> · <code>state</code> bitmask + <code>btn0Count</code>…<code>btn2Count</code>.
+    Board silk: <strong>SW0 / SW5 / SW6</strong> (mask bits 0x01 / 0x02 / 0x04).
+    Boot is <strong>hybrid</strong> (~2&nbsp;Hz floor + on-change). Press a user switch to see the lamp and count advance.
+  </p>
+
+  <div class="card" id="btnCard">
+    <h2>SW0 · SW5 · SW6</h2>
+    <div class="meta" style="margin-bottom: 8px;">
+      State mask: <code id="stateMask">0x00</code>
+      · pressed: <span id="pressedList">none</span>
+    </div>
+    <div id="btnRows"></div>
+    <div class="meta" id="btnMeta">waiting…</div>
+  </div>
+
+  <div class="card" style="margin-top: 12px;">
+    <div class="label">Display</div>
+    <p style="margin: 6px 0 0; font-size: 0.85rem; color: var(--muted); line-height: 1.45;">
+      Value is <strong>lap · slot</strong> (<code>floor(count/100) · count%100</code>), matching Sensor Telemetry.
+      Bar fill tracks the slot (0–99). Dot lights while the switch is pressed.
+    </p>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      SW_BTN_CHANNELS, formatPressLapSlot, pressSlotPct,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const entry = catalogEntry('sw_btn');
+    if (!entry) {
+      $('btnMeta').textContent = 'catalog missing sw_btn — refresh vendor/live-data.js';
+      throw new Error('sw_btn not in SENSOR_CATALOG');
+    }
+
+    const rowsRoot = $('btnRows');
+    const ui = {};
+    for (const ch of SW_BTN_CHANNELS) {
+      const row = document.createElement('div');
+      row.className = 'io-row';
+      row.innerHTML = `
+        <span class="dot" data-dot style="color:${ch.accent}"></span>
+        <span class="name">${ch.silk}</span>
+        <div class="bar"><div style="background:${ch.accent}"></div></div>
+        <span class="num"><span data-val>–</span> <small data-total></small></span>`;
+      rowsRoot.appendChild(row);
+      ui[ch.key] = {
+        bit: ch.bit,
+        accent: ch.accent,
+        silk: ch.silk,
+        dot: row.querySelector('[data-dot]'),
+        bar: row.querySelector('.bar > div'),
+        val: row.querySelector('[data-val]'),
+        total: row.querySelector('[data-total]'),
+      };
+    }
+
+    const stale = createStaleTracker(entry.staleAfterMs, (isStale) => {
+      $('btnCard').classList.toggle('stale', isStale);
+    });
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('sw_btn', (s) => {
+      stale.touch();
+      $('btnMeta').textContent = formatMeta(s);
+
+      const state = typeof s.fields.state === 'number' ? s.fields.state & 0x07 : 0;
+      $('stateMask').textContent = `0x${state.toString(16)}`;
+
+      const pressed = [];
+      for (const ch of SW_BTN_CHANNELS) {
+        const row = ui[ch.key];
+        const on = (state & ch.bit) !== 0;
+        const count = s.fields[ch.key];
+        row.dot.classList.toggle('on', on);
+        row.dot.style.background = on ? ch.accent : '#d4d8de';
+        row.bar.style.width = pressSlotPct(count) + '%';
+        row.bar.style.opacity = on ? '1' : '0.55';
+        row.val.textContent = formatPressLapSlot(count);
+        if (typeof count === 'number') {
+          row.total.textContent = `Σ ${Math.trunc(count)}`;
+        }
+        if (on) pressed.push(ch.silk);
+      }
+      $('pressedList').textContent = pressed.length ? pressed.join(', ') : 'none';
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'sw_btn') $('btnCard').classList.add('stale');
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

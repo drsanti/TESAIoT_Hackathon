@@ -1,0 +1,17 @@
+{
+  "name": "tesaiot-webbluetooth-diag",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Fresh Node Web Bluetooth step diag (thegecko/webbluetooth) — not Chrome",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "diag": "node ble_step_diag.mjs",
+    "start": "node ble_step_diag.mjs"
+  },
+  "dependencies": {
+    "webbluetooth": "^3.2.1"
+  }
+}

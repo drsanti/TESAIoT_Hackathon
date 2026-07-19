@@ -1,8 +1,8 @@
 # ble-react — Ternion BitStream BLE client (React)
 
-Publishable **React + TypeScript** monorepo for talking to **TESAIoT firmware over BLE** (Web Bluetooth). v1 ships a reference dashboard; core libraries publish to npm as **`@ternion/tbs-*`**.
+Publishable **React + TypeScript** monorepo for talking to **TESAIoT firmware over BLE**. Labs use **Web Bluetooth** or a **Node host BLE bridge** (recommended on Windows when Chromium WinRT drops GATT).
 
-**Status:** Documentation and scaffold plan only — implementation starts on a fresh machine.
+**Status:** Interactive tutorial + packages implemented (EVT-first). npm publish is prep-only.
 
 ---
 
@@ -10,10 +10,13 @@ Publishable **React + TypeScript** monorepo for talking to **TESAIoT firmware ov
 
 | Doc | Purpose |
 |-----|---------|
-| [docs/REQUIREMENTS.md](./docs/REQUIREMENTS.md) | Functional / non-functional requirements, v1 scope, acceptance tests |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layers, packages, naming (BS2 / TBS / BLE), multi-transport roadmap |
-| [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) | Phased build order, tasks, handoff checklist for new machine |
-| [docs/ADDONS.md](./docs/ADDONS.md) | Extension API v1 — `defineTbsAddon`, mixins, third-party packages |
+| [docs/LABS.md](./docs/LABS.md) | Tutorial map, run commands, EVT-first notes, RESET tip |
+| [docs/WEB_BLUETOOTH_WINDOWS.md](./docs/WEB_BLUETOOTH_WINDOWS.md) | Windows Web Bluetooth + **Node bridge** bring-up |
+| [tools/ble-bridge/README.md](./tools/ble-bridge/README.md) | Host BLE → WebSocket bridge |
+| [docs/REQUIREMENTS.md](./docs/REQUIREMENTS.md) | Functional / non-functional requirements |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layers, packages, naming |
+| [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) | Phased build order (updated for EVT-first smoke) |
+| [docs/ADDONS.md](./docs/ADDONS.md) | Extension API v1 (addon-kit deferred after labs) |
 
 ---
 
@@ -22,45 +25,63 @@ Publishable **React + TypeScript** monorepo for talking to **TESAIoT firmware ov
 | Sibling in hackathon | Role |
 |----------------------|------|
 | [`../web-app/`](../web-app/) | HTML demos via Bitstream Studio telemetry (WS / MQTT) — **no direct BLE** |
+| [`../python-app/`](../python-app/README.md) | Python EVT-first teaching labs (bleak) |
 | [`../ble-flet/`](../ble-flet/) | Desktop BLE dashboard (Python Flet + bleak) |
-| **`ble-react/`** | Browser BLE dashboard + **npm libraries** for React developers |
+| **`ble-react/`** | Browser tutorial → dashboard + **`@ternion/tbs-*`** (+ optional Node bridge) |
 
 ---
 
-## npm packages (published from `packages/`)
+## Quick start
 
-| Package | Role |
-|---------|------|
-| `@ternion/tbs-core` | BS2 wire encode/decode (transport-agnostic) |
-| `@ternion/tbs-ble-session` | BLE GATT session orchestration |
-| `@ternion/tbs-addon-kit` | `defineTbsAddon`, UI registry, `composeSession` |
-| `@ternion/tbs-example-led` | Reference add-on (optional publish) |
+```bash
+cd TESAIoT_Hackathon/ble-react
+pnpm install
+pnpm test
 
-`apps/dashboard` is a **private** reference app — not published.
+# Terminal 1 — Node BLE bridge (Windows recommended)
+pnpm bridge:install && pnpm bridge
+
+# Terminal 2 — labs UI
+pnpm dev              # http://localhost:5174/?ble=bridge
+pnpm dev:dashboard    # http://localhost:5175/
+```
+
+Open in **system Chrome or Edge** (not Cursor’s embedded browser). Follow the learning path → Why / Do / Check on each chapter.
+
+**Windows:** if Chapter 03+ fails right after connect, pair the board in **Windows Settings → Bluetooth** first, then use `http://localhost:5174/diag` (**Run all 1→6**). Details: [docs/WEB_BLUETOOTH_WINDOWS.md](./docs/WEB_BLUETOOTH_WINDOWS.md). Verified 2026-07-18: after OS pair, `/diag` all green.
+
+---
+
+## Layout
+
+```text
+packages/tbs-core          wire / chunk / decode
+packages/tbs-ble-session   goLive + CFG fire-and-forget
+apps/labs                  interactive tutorial (shared Web Bluetooth session)
+apps/labs/src/tutorial     TutorialShell / steps / progress
+apps/dashboard             Connect / Live / Link / Log
+```
 
 ---
 
 ## Firmware prerequisites
 
-1. Flash HEX from [`../hex/`](../hex/) (match VSIX/firmware version).
-2. One-time: enable **BLE module profile** bit `0x08` in Bitstream Studio → Runtime health → **reboot** (UART step). The React app does **not** require Studio at runtime.
-3. Disconnect other BLE centrals (nRF Connect, ble-flet).
-4. Use **Chrome or Edge** with Web Bluetooth; dev server on `https://localhost` or `http://localhost`.
-
-Normative BLE spec (external): Bitstream Studio [`BLE_BS2.md`](https://github.com/drsanti/Bitstream-Studio/blob/main/extension/src/bitstream2/docs/BLE_BS2.md) (or local clone under `Bitstream-Studio/extension/`).
+1. Flash HEX from [`../hex/`](../hex/).
+2. One-time: enable **BLE module profile** bit `0x08` in Bitstream Studio → reboot (UART step). Runtime does **not** need Studio.
+3. Disconnect other BLE centrals.
+4. After connect timeout, press **RESET** until TFT soft-blue.
 
 ---
 
-## Quick start (after implementation)
+## Teaching path (EVT-first)
 
-```bash
-cd TESAIoT_Hackathon/ble-react
-pnpm install
-pnpm --filter @ternion/tbs-core test
-pnpm --filter dashboard dev
-```
+Canonical flow matches python-app:
 
-Open the Vite URL in Chrome; use **Connect** → pick `TESAIoT-*` → **Stream on** → verify Live sensor cards.
+1. Connect GATT  
+2. `startNotifications` on BS_TX (CCCD arms `TX_EVT`)  
+3. Decode `EVT_SENSOR`  
+
+PING / POLICY wait is **advanced / optional**, not early-lab acceptance.
 
 ---
 
@@ -68,11 +89,10 @@ Open the Vite URL in Chrome; use **Connect** → pick `TESAIoT-*` → **Stream o
 
 | Source | Use for |
 |--------|---------|
-| [`../ble-flet/bs2/`](../ble-flet/bs2/) | Session flow, rate math (`deviceMs`), scene presets |
+| [`../python-app/shared/`](../python-app/shared/) | SessionLite / wire / decode parity |
 | Bitstream Studio `packages/bitstream-ble-client` | GATT UUIDs, chunk envelope v1 |
-| Bitstream Studio `extension/src/bitstream2/domains/ble/` | Policy / telem cmdIds and flags |
 
-**Rule:** `ble-react` must **not** depend on `Bitstream-Studio/extension/` at build time — copy constants and logic into `@ternion/tbs-core`.
+**Rule:** `ble-react` must **not** depend on `Bitstream-Studio/extension/` at build time.
 
 ---
 

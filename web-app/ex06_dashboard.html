@@ -22,23 +22,39 @@
     <span id="route"></span>
   </header>
 
-  <div class="grid grid-4" id="cards"></div>
+  <p class="note">
+    Six equal peers: BMI270, BMM350, SHT40, DPS368, <code>adc_pot</code>, <code>sw_btn</code>.
+    Enable pots/switches in Bitstream Studio Sensor Config if cards stay idle.
+  </p>
+
+  <div class="grid grid-6" id="cards"></div>
 
   <script type="module">
-    import { loadSdk, formatMeta, wireConnectionBadge, connectTelemetry } from './shared/ex-demo.js';
+    import {
+      loadSdk, formatMeta, wireConnectionBadge, connectTelemetry,
+      formatPressLapSlot, SW_BTN_CHANNELS,
+    } from './shared/ex-demo.js';
 
     const { TelemetryClient, SENSOR_CATALOG } = await loadSdk();
     const $ = (id) => document.getElementById(id);
     const cardsEl = $('cards');
     const cells = new Map();
     const metaEls = new Map();
+    const silkByKey = Object.fromEntries(SW_BTN_CHANNELS.map((c) => [c.key, c.silk]));
 
     /** Primary fields to show per sensor (compact dashboard). */
     const PRIMARY = {
       sht40: ['temperatureC', 'humidityPct'],
       dps368: ['pressureHpa', 'temperatureC'],
-      bmm350: ['magX', 'magY', 'magZ', 'temperatureC'],
+      bmm350: ['magX', 'magY', 'magZ'],
       bmi270: ['accelX', 'accelY', 'accelZ', 'gyroZ'],
+      adc_pot: ['pot1Mv', 'pot2Mv', 'pot3Mv', 'pot4Mv'],
+      sw_btn: ['state', 'btn0Count', 'btn1Count', 'btn2Count'],
+    };
+
+    const TITLE = {
+      adc_pot: 'ADC_POT (pots)',
+      sw_btn: 'SW_BTN (switches)',
     };
 
     for (const sensor of SENSOR_CATALOG.sensors) {
@@ -46,19 +62,35 @@
       const card = document.createElement('div');
       card.className = 'card';
       card.id = `card-${sensor.id}`;
-      card.innerHTML = `<h2>${sensor.label}</h2><div class="meta" id="meta-${sensor.id}">waiting…</div><div class="rows"></div>`;
+      const title = TITLE[sensor.id] ?? sensor.label;
+      card.innerHTML = `<h2>${title}</h2><div class="meta" id="meta-${sensor.id}">waiting…</div><div class="rows"></div>`;
       const rows = card.querySelector('.rows');
       for (const key of keys) {
         const f = sensor.fields.find((x) => x.key === key);
         if (!f) continue;
+        const label = silkByKey[key] ?? f.label;
         const row = document.createElement('div');
         row.className = 'dash-row';
-        row.innerHTML = `<span class="k">${f.label}</span><span class="v">– <span class="u">${f.unit}</span></span>`;
+        row.innerHTML = `<span class="k">${label}</span><span class="v">– <span class="u">${f.unit}</span></span>`;
         rows.appendChild(row);
         cells.set(`${sensor.id}.${key}`, row.querySelector('.v'));
       }
       cardsEl.appendChild(card);
       metaEls.set(sensor.id, $(`meta-${sensor.id}`));
+    }
+
+    function formatDashValue(sensor, key, value) {
+      if (sensor === 'sw_btn' && key === 'state') {
+        return `0x${(value & 0x07).toString(16)}`;
+      }
+      if (sensor === 'sw_btn' && key.startsWith('btn')) {
+        return formatPressLapSlot(value);
+      }
+      if (sensor === 'adc_pot') {
+        return String(Math.round(value));
+      }
+      const digits = key.startsWith('quat') ? 4 : key.includes('gyro') || key.startsWith('accel') ? 2 : 1;
+      return value.toFixed(digits);
     }
 
     const client = new TelemetryClient();
@@ -73,8 +105,7 @@
         if (!cell || typeof value !== 'number') continue;
         const u = cell.querySelector('.u');
         const unit = u?.textContent ?? '';
-        const digits = key.startsWith('quat') ? 4 : key.includes('gyro') || key.startsWith('accel') ? 2 : 1;
-        cell.textContent = `${value.toFixed(digits)} `;
+        cell.textContent = `${formatDashValue(s.sensor, key, value)} `;
         if (unit) {
           const span = document.createElement('span');
           span.className = 'u';
@@ -92,3 +123,4 @@
   </script>
 </body>
 </html>
+

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ex16 — ADC_POT Potentiometers</title>
+  <link rel="stylesheet" href="./shared/ex-demo.css" />
+  <style>
+    #pot1Bar > div { background: var(--pot1); }
+    #pot2Bar > div { background: var(--pot2); }
+    #pot3Bar > div { background: var(--pot3); }
+    #pot4Bar > div { background: var(--pot4); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="index.html">← Examples</a>
+    <h1>ADC_POT — Potentiometers</h1>
+    <span id="state">disconnected</span>
+    <span id="route"></span>
+  </header>
+
+  <p class="note">
+    Wire <code>sensorId=4</code> · fields <code>pot1Mv</code>…<code>pot4Mv</code> (0–1800&nbsp;mV).
+    Firmware boot is <strong>hybrid</strong> (~5&nbsp;Hz floor + 10&nbsp;mV on-change). Turn POT1–POT4 on the DevKit.
+  </p>
+
+  <div class="card" id="potCard">
+    <h2>POT1 – POT4</h2>
+    <div id="potRows"></div>
+    <div class="meta" id="potMeta">waiting…</div>
+  </div>
+
+  <div class="card" style="margin-top: 12px;">
+    <div class="label">History (POT1, last 120 samples)</div>
+    <canvas id="chart" class="chart" width="760" height="200"></canvas>
+  </div>
+
+  <script type="module">
+    import {
+      loadSdk, pct, formatMeta, createStaleTracker, wireConnectionBadge, connectTelemetry,
+      fieldDef, pushHistory, drawSparkline,
+      ADC_POT_KEYS, ADC_POT_COLORS,
+    } from './shared/ex-demo.js';
+
+    const { TelemetryClient, catalogEntry } = await loadSdk();
+    const $ = (id) => document.getElementById(id);
+    const entry = catalogEntry('adc_pot');
+    if (!entry) {
+      $('potMeta').textContent = 'catalog missing adc_pot — refresh vendor/live-data.js';
+      throw new Error('adc_pot not in SENSOR_CATALOG');
+    }
+
+    const rowsRoot = $('potRows');
+    const bars = {};
+    const vals = {};
+    for (let i = 0; i < ADC_POT_KEYS.length; i++) {
+      const key = ADC_POT_KEYS[i];
+      const def = fieldDef(entry, key);
+      const row = document.createElement('div');
+      row.className = 'io-row';
+      row.innerHTML = `
+        <span class="dot" style="background:${ADC_POT_COLORS[i]}"></span>
+        <span class="name">${def?.label ?? key}</span>
+        <div class="bar" id="pot${i + 1}Bar"><div></div></div>
+        <span class="num"><span data-val>–</span> <small>${def?.unit ?? 'mV'}</small></span>`;
+      rowsRoot.appendChild(row);
+      bars[key] = row.querySelector('.bar > div');
+      vals[key] = row.querySelector('[data-val]');
+    }
+
+    const hist = [];
+    const canvas = $('chart');
+    const ctx = canvas.getContext('2d');
+    const stale = createStaleTracker(entry.staleAfterMs, (isStale) => {
+      $('potCard').classList.toggle('stale', isStale);
+    });
+
+    const client = new TelemetryClient();
+    wireConnectionBadge(client, $('state'), $('route'));
+
+    client.onSensor('adc_pot', (s) => {
+      stale.touch();
+      $('potMeta').textContent = formatMeta(s);
+      for (const key of ADC_POT_KEYS) {
+        const v = s.fields[key];
+        if (typeof v !== 'number') continue;
+        const def = fieldDef(entry, key);
+        vals[key].textContent = String(Math.round(v));
+        bars[key].style.width = pct(v, def) + '%';
+      }
+      if (typeof s.fields.pot1Mv === 'number') {
+        pushHistory(hist, s.fields.pot1Mv);
+        drawSparkline(ctx, canvas, hist, ADC_POT_COLORS[0]);
+      }
+    });
+
+    client.on('stale', (info) => {
+      if (info.sensor === 'adc_pot') $('potCard').classList.add('stale');
+    });
+
+    await connectTelemetry(client, $('route'));
+  </script>
+</body>
+</html>

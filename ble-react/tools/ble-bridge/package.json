@@ -1,0 +1,18 @@
+{
+  "name": "@ternion/tbs-ble-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Node host BLE → WebSocket bridge for ble-react labs (bypasses Windows browser Web Bluetooth)",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "bridge": "node src/server.mjs"
+  },
+  "dependencies": {
+    "webbluetooth": "^3.2.1",
+    "ws": "^8.18.0"
+  }
+}

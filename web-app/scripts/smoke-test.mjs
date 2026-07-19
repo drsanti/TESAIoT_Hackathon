@@ -28,7 +28,11 @@ const EXAMPLES = [
   'ex13_mqtt_live_data_client.html',
   'ex14_mqtt_qos_retain.html',
   'ex15_ws_mqtt_dashboard.html',
+  'ex16_adc_pot.html',
+  'ex17_sw_btn.html',
 ];
+
+const EXPECTED_CATALOG_IDS = 'adc_pot,bmi270,bmm350,dps368,sht40,sw_btn';
 
 const SDK_PATHS = ['/@bitstream/ws-live-data.js', '/@bitstream/mqtt-live-data.js'];
 
@@ -58,7 +62,7 @@ async function httpOk(url) {
 async function main() {
   let failed = 0;
 
-  // Vendor SDK import (offline path for ex01–ex08, ex13, ex15)
+  // Vendor SDK import (offline path for provider examples)
   try {
     const mod = await import(
       pathToFileURL(path.join(WEB_ROOT, 'vendor/live-data.js')).href
@@ -71,11 +75,11 @@ async function main() {
       }
     }
     const ids = mod.SENSOR_CATALOG.sensors.map((s) => s.id).sort().join(',');
-    if (ids !== 'bmi270,bmm350,dps368,sht40') {
-      console.error(`[FAIL] unexpected catalog sensors: ${ids}`);
+    if (ids !== EXPECTED_CATALOG_IDS) {
+      console.error(`[FAIL] unexpected catalog sensors: ${ids} (expected ${EXPECTED_CATALOG_IDS})`);
       failed += 1;
     } else {
-      console.log('[OK] vendor/live-data.js exports + catalog');
+      console.log('[OK] vendor/live-data.js exports + six-sensor catalog');
     }
   } catch (e) {
     console.error('[FAIL] vendor import:', e.message);

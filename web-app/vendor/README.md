@@ -1,6 +1,8 @@
 # Offline live-data SDK
 
-`live-data.js` is a browser ESM bundle of `@bitstream/live-data` so provider examples (`ex01`–`ex08`) work with `npx serve .` without the Bitstream Studio web-app server.
+`live-data.js` is a browser ESM bundle of `@bitstream/live-data` so provider examples (`ex01`–`ex08`, `ex16`–`ex17`) work with `npx serve .` without the Bitstream Studio web-app server.
+
+The bundled catalog includes all **six** peer sensors: BMI270, BMM350, SHT40, DPS368, ADC_POT, SW_BTN.
 
 Refresh from Bitstream-Studio:
 

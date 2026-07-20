@@ -1,7 +1,14 @@
 {
   "channel": "stable",
-  "latest": "0.1.11",
+  "latest": "0.1.12",
   "firmware": [
+    {
+      "version": "0.1.12",
+      "file": "tesaiot-bitstream-0.1.12.hex",
+      "size": 5612427,
+      "date": "2026-07-19",
+      "notes": "Bitstream Studio 0.1.12 handoff firmware"
+    },
     {
       "version": "0.1.11",
       "file": "tesaiot-bitstream-0.1.11.hex",

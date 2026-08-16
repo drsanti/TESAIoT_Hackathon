@@ -22,7 +22,26 @@ Watch the YouTube playlists above before or alongside the steps below: [BitStrea
 
 ---
 
-## Contents
+## Table of contents
+
+1. [Repository layout](#repository-layout)
+2. [Requirements](#requirements)
+3. [Quick start](#quick-start)
+   - [1. Download this repo](#1-download-this-repo)
+   - [2. Install Bitstream Studio](#2-install-bitstream-studio)
+   - [3. Flash firmware (hardware labs)](#3-flash-firmware-hardware-labs)
+   - [4. Connect your board or simulator](#4-connect-your-board-or-simulator)
+   - [5. First-time tips](#5-first-time-tips)
+4. [Download only `web-app`](#download-only-web-app)
+5. [Web app examples](#web-app-examples)
+   - [How to run](#how-to-run)
+   - [Example catalog](#example-catalog)
+6. [Bitstream vs Simulator](#bitstream-vs-simulator)
+7. [Troubleshooting](#troubleshooting)
+
+---
+
+## Repository layout
 
 | Folder                 | Purpose                                                      |
 | ---------------------- | ------------------------------------------------------------ |
@@ -105,6 +124,38 @@ Bitstream Studio starts its background services when the extension loads — not
 | ------------------------- | --------------------------------------------------------------------------------------- |
 | **3D models in the UI**   | Command Palette → **Download Free Assets from GitHub**                                  |
 | **Blank or frozen panel** | Command Palette → **Bitstream Studio: Reload Webview**, or **Developer: Reload Window** |
+
+---
+
+## Download only `web-app`
+
+If you already have Bitstream Studio installed (or will get the VSIX another way) and only need the HTML telemetry examples, use a **sparse clone** so Git does not download `vsix/`, `hex/`, or other large handoff folders:
+
+```bash
+git clone --filter=blob:none --sparse https://github.com/drsanti/TESAIoT_Hackathon.git
+cd TESAIoT_Hackathon
+git sparse-checkout set web-app
+```
+
+| Step | Purpose |
+| ---- | ------- |
+| `--filter=blob:none` | Partial clone — file contents download only when needed |
+| `--sparse` | Start with a sparse working tree (usually root files only) |
+| `git sparse-checkout set web-app` | Check out [`web-app/`](web-app/) and everything under it |
+
+**Optional — shallower clone** (history tip only):
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/drsanti/TESAIoT_Hackathon.git
+cd TESAIoT_Hackathon
+git sparse-checkout set web-app
+```
+
+Notes:
+
+- Root files such as `README.md` may still appear; that is normal.
+- Large **VSIX** / **HEX** (Git LFS) artifacts stay out of the working tree.
+- To serve the examples, point Bitstream Studio’s **Serve Web App Folder over HTTP** at the local `web-app/` folder (see below).
 
 ---
 

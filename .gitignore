@@ -15,12 +15,21 @@ Thumbs.db
 
 # Maintainer-only (keep local; not published to GitHub)
 AGENT.md
+
 hex/BUILD.txt
 hex/AGENT.md
+
 vsix/BUILD.txt
 vsix/AGENT.md
+
 flasher/BUILD.txt
 ide/BUILD.txt
+
+ble-react/
+
+ble-flet/
+
+python-app/
 
 # Python
 __pycache__/

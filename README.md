@@ -2,21 +2,21 @@
 
 [![Release](https://img.shields.io/badge/release-v0.2.0-0B6E99?style=flat-square)](hex/firmware-manifest.json)
 [![Updated](https://img.shields.io/badge/updated-2026--08--16-2E7D32?style=flat-square)](hex/firmware-manifest.json)
-[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.2.0-5C6BC0?style=flat-square)](vsix/)
+[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.2.1-5C6BC0?style=flat-square)](vsix/)
 [![Firmware](https://img.shields.io/badge/firmware%20HEX-0.2.0-F57C00?style=flat-square)](hex/)
 [![Repo](https://img.shields.io/badge/GitHub-TESAIoT__Hackathon-181717?style=flat-square&logo=github)](https://github.com/drsanti/TESAIoT_Hackathon)
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
-- **Latest VSIX:** Bitstream Studio **0.2.0** (`vsix/bitstream-studio-0.2.0.vsix`)
-- **Paired firmware HEX:** **0.2.0** (`hex/tesaiot-bitstream-0.2.0.hex`)
+- **Latest VSIX:** Bitstream Studio **0.2.1** (`vsix/bitstream-studio-0.2.1.vsix`)
+- **Paired firmware HEX:** **0.2.0** (`hex/tesaiot-bitstream-0.2.0.hex`) — unchanged; 0.2.1 is a host-only update
 - **Updated:** 2026-08-16
 - **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
 - **Video tutorials:**
   - [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) — install, flash, connect, and demos
   - [AIoT Foundation](https://www.youtube.com/watch?v=Wc_nXiLS864&list=PLOuPSlsBpTYA) — full course playlist
 
-> Prefer matching VSIX and firmware versions. When in doubt, use the **`latest`** entry in the firmware manifest.
+> Use the newest VSIX together with the **`latest`** entry in the firmware manifest. Firmware only needs reflashing when a newer HEX is published.
 
 Watch the YouTube playlists above before or alongside the steps below: [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) and [AIoT Foundation](https://www.youtube.com/watch?v=Wc_nXiLS864&list=PLOuPSlsBpTYA).
 
@@ -82,7 +82,7 @@ cd TESAIoT_Hackathon
 
 ### 2. Install Bitstream Studio
 
-1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current: **`0.2.0`**, paired with HEX **`0.2.0`**), or the version your instructor specified.
+1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current: **`0.2.1`**, paired with HEX **`0.2.0`**), or the version your instructor specified.
 2. In VS Code or Cursor: **Extensions** → **`…`** → **Install from VSIX…** → select that file.
 3. Click **Reload** when prompted.
 4. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **Open Bitstream Studio**.
@@ -92,7 +92,7 @@ More detail: [`vsix/README.md`](vsix/README.md)
 **Optional — install from the terminal** (from the repo root; change the version if needed):
 
 ```bash
-code --install-extension vsix/bitstream-studio-0.2.0.vsix
+code --install-extension vsix/bitstream-studio-0.2.1.vsix
 code -r
 ```
 
@@ -104,7 +104,7 @@ code --uninstall-extension TERNIONDEV.bitstream-studio
 
 ### 3. Flash firmware (hardware labs)
 
-1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX (current: **`tesaiot-bitstream-0.2.0.hex`**).
+1. Open [`hex/`](hex/) and pick the newest **`tesaiot-bitstream-<version>.hex`** (current: **`tesaiot-bitstream-0.2.0.hex`**, which pairs with VSIX **0.2.1**).
 2. Flash the board with **TESAIoT Flasher** ([`flasher/`](flasher/)) or **ModusToolbox**.
 3. If no serial port appears, unplug and replug the USB cable.
 

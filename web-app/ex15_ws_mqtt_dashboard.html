@@ -80,9 +80,13 @@
       const url = transport === "mqtt" ? DEFAULT_MQTT_WS_URL : DEFAULT_T3D_WS_URL;
       transportLabel.textContent = url;
 
+      // autoConnect:false — we call connect() below; leaving the default true
+      // would open a second mqtt.js socket with the same clientId and the
+      // broker would kick them back and forth (status: connected ↔ disconnected).
       client = new LiveDataClient({
         transport,
         url,
+        autoConnect: false,
         clientId: "ex15-" + Math.random().toString(16).slice(2, 8),
       });
 

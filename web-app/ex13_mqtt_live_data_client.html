@@ -57,9 +57,12 @@
         }
       }
       currentFilter = filterInput.value.trim() || "sensors/lab/temp";
+      // autoConnect:false — we call connect() below; default true would open a
+      // second mqtt.js socket with the same clientId (broker session takeover).
       client = new LiveDataClient({
         transport: "mqtt",
         url: DEFAULT_MQTT_WS_URL,
+        autoConnect: false,
         clientId: "ex13-" + Math.random().toString(16).slice(2, 8),
       });
 

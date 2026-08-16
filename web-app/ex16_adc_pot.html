@@ -47,7 +47,8 @@
     const $ = (id) => document.getElementById(id);
     const entry = catalogEntry('adc_pot');
     if (!entry) {
-      $('potMeta').textContent = 'catalog missing adc_pot — refresh vendor/live-data.js';
+      $('potMeta').textContent =
+        'catalog missing adc_pot — use Bitstream Studio → Serve Web App Folder over HTTP (update the VSIX if needed)';
       throw new Error('adc_pot not in SENSOR_CATALOG');
     }
 

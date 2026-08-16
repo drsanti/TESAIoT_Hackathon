@@ -1,6 +1,6 @@
 /**
  * LiveDataClient loader for hackathon SDK MQTT / WebSocket examples (ex13, ex15).
- * Tries VSIX serve path first, then bundled vendor fallback (same bundle as ex-demo).
+ * Tries VSIX Serve Web App Folder first, then optional local vendor fallback.
  */
 
 const SDK_IMPORT_CANDIDATES = [
@@ -26,7 +26,7 @@ export async function loadLiveDataClient() {
     }
   }
   const hint =
-    'Live-data SDK not found. Use Bitstream Studio → "Serve Web App Folder over HTTP", or copy packages/live-data/dist/live-data.browser.js to web-app/vendor/live-data.js.';
+    'Live-data SDK not found. Use Bitstream Studio → Command Palette → "Serve Web App Folder over HTTP" on this web-app folder.';
   const err = new Error(hint);
   err.cause = lastErr;
   throw err;

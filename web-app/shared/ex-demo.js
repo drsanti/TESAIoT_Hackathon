@@ -32,7 +32,7 @@ export function pressSlotPct(n) {
   return Math.max(0, Math.trunc(n)) % 100;
 }
 
-/** Import URLs tried in order (VSIX serve → legacy alias → bundled vendor copy). */
+/** Import URLs tried in order (VSIX Serve Web App Folder → legacy alias → optional local vendor). */
 const SDK_IMPORT_CANDIDATES = [
   '/@bitstream/ws-live-data.js',
   '/sdk/live-data.js',
@@ -57,7 +57,7 @@ export async function loadSdk() {
     }
   }
   const hint =
-    'Live-data SDK not found. Use Bitstream Studio → "Serve Web App Folder over HTTP", or copy packages/live-data/dist/live-data.browser.js to web-app/vendor/live-data.js.';
+    'Live-data SDK not found. Use Bitstream Studio → Command Palette → "Serve Web App Folder over HTTP" on this web-app folder.';
   const err = new Error(hint);
   err.cause = lastErr;
   throw err;

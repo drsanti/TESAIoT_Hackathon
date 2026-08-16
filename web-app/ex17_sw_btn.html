@@ -48,7 +48,8 @@
     const $ = (id) => document.getElementById(id);
     const entry = catalogEntry('sw_btn');
     if (!entry) {
-      $('btnMeta').textContent = 'catalog missing sw_btn — refresh vendor/live-data.js';
+      $('btnMeta').textContent =
+        'catalog missing sw_btn — use Bitstream Studio → Serve Web App Folder over HTTP (update the VSIX if needed)';
       throw new Error('sw_btn not in SENSOR_CATALOG');
     }
 

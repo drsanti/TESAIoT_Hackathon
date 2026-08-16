@@ -2,8 +2,6 @@
 Thumbs.db
 *.log
 
-# vendor/live-data.js is tracked for npx serve offline demos (refresh via sync-hackathon-live-data-vendor.sh)
-
 # Local editor / tooling
 .idea/
 .vscode/
@@ -30,6 +28,15 @@ ble-react/
 ble-flet/
 
 python-app/
+
+# Offline live-data SDK copy (optional; Serve Web App Folder uses extension SDK).
+# Keep the folder in git; ignore file contents.
+web-app/vendor/*
+!web-app/vendor/.gitkeep
+
+# Maintainer web-app smoke scripts (not needed by participants).
+web-app/scripts/*
+!web-app/scripts/.gitkeep
 
 # Python
 __pycache__/

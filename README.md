@@ -12,8 +12,13 @@ Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **
 - **Paired firmware HEX:** **0.2.0** (`hex/tesaiot-bitstream-0.2.0.hex`)
 - **Updated:** 2026-08-16
 - **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
+- **Video tutorials:**
+  - [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) — install, flash, connect, and demos
+  - [AIoT Foundation](https://www.youtube.com/watch?v=Wc_nXiLS864&list=PLOuPSlsBpTYA) — full course playlist
 
 > Prefer matching VSIX and firmware versions. When in doubt, use the **`latest`** entry in the firmware manifest.
+
+Watch the YouTube playlists above before or alongside the steps below: [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) and [AIoT Foundation](https://www.youtube.com/watch?v=Wc_nXiLS864&list=PLOuPSlsBpTYA).
 
 ---
 

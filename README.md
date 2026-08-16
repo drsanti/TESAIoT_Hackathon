@@ -1,16 +1,16 @@
 # TESAIoT Hackathon
 
-[![Release](https://img.shields.io/badge/release-v0.1.12-0B6E99?style=flat-square)](hex/firmware-manifest.json)
-[![Updated](https://img.shields.io/badge/updated-2026--07--24-2E7D32?style=flat-square)](hex/firmware-manifest.json)
-[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.1.14-5C6BC0?style=flat-square)](vsix/)
-[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.1.12-F57C00?style=flat-square)](hex/)
+[![Release](https://img.shields.io/badge/release-v0.2.0-0B6E99?style=flat-square)](hex/firmware-manifest.json)
+[![Updated](https://img.shields.io/badge/updated-2026--08--16-2E7D32?style=flat-square)](hex/firmware-manifest.json)
+[![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.2.0-5C6BC0?style=flat-square)](vsix/)
+[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.2.0-F57C00?style=flat-square)](hex/)
 [![Repo](https://img.shields.io/badge/GitHub-TESAIoT__Hackathon-181717?style=flat-square&logo=github)](https://github.com/drsanti/TESAIoT_Hackathon)
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
-- **Latest VSIX:** Bitstream Studio **0.1.14** (`vsix/bitstream-studio-0.1.14.vsix`)
-- **Paired firmware HEX:** **0.1.12** (no newer HEX drop yet — prefer matching versions when flashing)
-- **Updated:** 2026-07-24
+- **Latest VSIX:** Bitstream Studio **0.2.0** (`vsix/bitstream-studio-0.2.0.vsix`)
+- **Paired firmware HEX:** **0.2.0** (`hex/tesaiot-bitstream-0.2.0.hex`)
+- **Updated:** 2026-08-16
 - **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
 
 > Prefer matching VSIX and firmware versions. When in doubt, use the **`latest`** entry in the firmware manifest.
@@ -19,14 +19,15 @@ Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **
 
 ## Contents
 
-| Folder                   | Purpose                                                      |
-| ------------------------ | ------------------------------------------------------------ |
-| [`vsix/`](vsix/)         | Bitstream Studio extension — install in VS Code or Cursor    |
-| [`ide/`](ide/)           | BitStream IDE installers (all-in-one app; optional)          |
-| [`hex/`](hex/)           | DevKit firmware — flash before hardware labs                 |
-| [`flasher/`](flasher/)   | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
-| [`web-app/`](web-app/)   | Telemetry provider HTML examples (ex01–ex15)                 |
-| [`python-app/`](python-app/) | Progressive BLE + BS2 Python labs (GATT ATT ops + all sensors) |
+| Folder                 | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| [`vsix/`](vsix/)       | Bitstream Studio extension — install in VS Code or Cursor    |
+| [`ide/`](ide/)         | BitStream IDE installers (all-in-one app; optional)          |
+| [`hex/`](hex/)         | DevKit firmware — flash before hardware labs                 |
+| [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |
+| [`web-app/`](web-app/) | Telemetry provider HTML examples (ex01–ex17)                 |
+
+**Not in this GitHub clone** (maintainer-only; listed in [`.gitignore`](.gitignore)): `python-app/`, `ble-react/`, `ble-flet/`. Those BLE teaching apps stay on the maintainer machine and are not part of the published handoff.
 
 ---
 
@@ -57,7 +58,7 @@ cd TESAIoT_Hackathon
 
 ### 2. Install Bitstream Studio
 
-1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current VSIX: **`0.1.14`**; paired HEX still **`0.1.12`**), or the version your instructor specified.
+1. Open [`vsix/`](vsix/) and select the newest **`bitstream-studio-<version>.vsix`** (current: **`0.2.0`**, paired with HEX **`0.2.0`**), or the version your instructor specified.
 2. In VS Code or Cursor: **Extensions** → **`…`** → **Install from VSIX…** → select that file.
 3. Click **Reload** when prompted.
 4. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) → **Open Bitstream Studio**.
@@ -67,7 +68,7 @@ More detail: [`vsix/README.md`](vsix/README.md)
 **Optional — install from the terminal** (from the repo root; change the version if needed):
 
 ```bash
-code --install-extension vsix/bitstream-studio-0.1.14.vsix
+code --install-extension vsix/bitstream-studio-0.2.0.vsix
 code -r
 ```
 
@@ -79,7 +80,7 @@ code --uninstall-extension TERNIONDEV.bitstream-studio
 
 ### 3. Flash firmware (hardware labs)
 
-1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX (current: **`tesaiot-bitstream-0.1.12.hex`**).
+1. Open [`hex/`](hex/) and pick **`tesaiot-bitstream-<version>.hex`** with the **same version** as your VSIX (current: **`tesaiot-bitstream-0.2.0.hex`**).
 2. Flash the board with **TESAIoT Flasher** ([`flasher/`](flasher/)) or **ModusToolbox**.
 3. If no serial port appears, unplug and replug the USB cable.
 
@@ -116,32 +117,7 @@ The [`web-app/`](web-app/) folder has HTML pages that display **live sensor data
 
 Open [`web-app/index.html`](web-app/index.html) in the served site for the full catalog and short instructions.
 
-### Desktop BLE (Python labs)
-
-For **direct BLE to the DevKit** (no browser Web Bluetooth), use the teaching labs in [`python-app/`](python-app/):
-
-```bash
-cd python-app
-python -m pip install -r requirements.txt
-./run_lab.sh 01          # Unix
-run_lab.cmd 01           # Windows
-```
-
-See [`python-app/README.md`](python-app/README.md) for the lab map (scan → connect → GATT → PING → sensors).
-
-**Rate tip:** keep teaching labs near **1 Hz** periodic rates (`shared/rates.py`). High multi-sensor rates over BLE can starve CM33.
-
-### Browser BLE (React / Web Bluetooth)
-
-Interactive tutorial + `@ternion/tbs-*` live in [`ble-react/`](ble-react/):
-
-```bash
-cd ble-react
-pnpm install
-pnpm dev                 # http://localhost:5174/
-```
-
-Use **system Chrome or Edge**. Follow Why → Do → Check on each chapter. On Windows, if GATT drops right after connect, pair `TESAIoT-*` in **Settings → Bluetooth**, then open `/diag` (**Run all 1→6**). Canonical notes: [`ble-react/docs/WEB_BLUETOOTH_WINDOWS.md`](ble-react/docs/WEB_BLUETOOTH_WINDOWS.md).
+Hackathon participants use **Bitstream Studio** (UART / Simulator / BLE host in the extension) plus these **web-app** pages. Standalone BLE lab trees (`python-app`, `ble-react`, `ble-flet`) are **not** published here.
 
 ### Example catalog
 

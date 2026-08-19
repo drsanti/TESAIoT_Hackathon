@@ -1,16 +1,16 @@
 # TESAIoT Hackathon
 
-[![Release](https://img.shields.io/badge/release-v0.2.0-0B6E99?style=flat-square)](hex/firmware-manifest.json)
-[![Updated](https://img.shields.io/badge/updated-2026--08--16-2E7D32?style=flat-square)](hex/firmware-manifest.json)
+[![Release](https://img.shields.io/badge/release-v0.2.1-0B6E99?style=flat-square)](hex/firmware-manifest.json)
+[![Updated](https://img.shields.io/badge/updated-2026--08--19-2E7D32?style=flat-square)](hex/firmware-manifest.json)
 [![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.2.1-5C6BC0?style=flat-square)](vsix/)
-[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.2.0-F57C00?style=flat-square)](hex/)
+[![Firmware](https://img.shields.io/badge/firmware%20HEX-0.2.1-F57C00?style=flat-square)](hex/)
 [![Repo](https://img.shields.io/badge/GitHub-TESAIoT__Hackathon-181717?style=flat-square&logo=github)](https://github.com/drsanti/TESAIoT_Hackathon)
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
 - **Latest VSIX:** Bitstream Studio **0.2.1** (`vsix/bitstream-studio-0.2.1.vsix`)
-- **Paired firmware HEX:** **0.2.0** (`hex/tesaiot-bitstream-0.2.0.hex`) — unchanged; 0.2.1 is a host-only update
-- **Updated:** 2026-08-16
+- **Paired firmware HEX:** **0.2.1** (`hex/tesaiot-bitstream-0.2.1.hex`)
+- **Updated:** 2026-08-19
 - **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
 - **Video tutorials:**
   - [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) — install, flash, connect, and demos

@@ -37,7 +37,7 @@ If the app exits immediately after install, reinstall from a **fresh** release b
 From the BitStream IDE repo:
 
 ```bash
-node ternion/download-ide-release-to-hackathon.mjs --tag bitstream-ide-v0.1.10
+node ternion/download-ide-release-to-hackathon.mjs --tag bitstream-ide-v0.3.0
 ```
 
 Then commit/push **TESAIoT_Hackathon** (use Git LFS for large `.exe` / `.dmg` if configured). The download script keeps slim installers only (drops any legacy `*Assets*` artifacts).

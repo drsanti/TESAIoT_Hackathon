@@ -7,7 +7,37 @@
       "file": "tesaiot-bitstream-0.5.0.hex",
       "size": 5778997,
       "date": "2026-09-29",
-      "notes": "Bitstream Studio 0.5.0 — Neuron Studio R1–R11b + R4c power-cycle persist; Capture pcm chunks; WiFi+BLE coexistence; branded boot splash; HMI brand v0.5.0"
+      "notes": "Bitstream Studio 0.5.0 — Neuron Studio R1–R11b + R4c power-cycle persist; Capture pcm chunks; WiFi+BLE coexistence; branded boot splash; HMI brand v0.5.0",
+      "memory": {
+        "cores": [
+          {
+            "id": "cm33_s",
+            "label": "CM33-S",
+            "flashUsed": 27908,
+            "flashTotal": 2097152,
+            "pct": 1
+          },
+          {
+            "id": "cm33_ns",
+            "label": "CM33-NS",
+            "flashUsed": 1241104,
+            "flashTotal": 2097152,
+            "pct": 59
+          },
+          {
+            "id": "cm55",
+            "label": "CM55",
+            "flashUsed": 687720,
+            "flashTotal": 2883584,
+            "pct": 24
+          }
+        ],
+        "sram": {
+          "used": 414677,
+          "total": 1048576,
+          "pct": 40
+        }
+      }
     },
     {
       "version": "0.2.1",

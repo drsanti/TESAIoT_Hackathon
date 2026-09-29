@@ -1,12 +1,19 @@
 {
   "channel": "stable",
-  "latest": "0.2.1",
+  "latest": "0.5.0",
   "firmware": [
+    {
+      "version": "0.5.0",
+      "file": "tesaiot-bitstream-0.5.0.hex",
+      "size": 5778997,
+      "date": "2026-09-29",
+      "notes": "Bitstream Studio 0.5.0 — Neuron Studio R1–R11b + R4c power-cycle persist; Capture pcm chunks; WiFi+BLE coexistence; branded boot splash; HMI brand v0.5.0"
+    },
     {
       "version": "0.2.1",
       "file": "tesaiot-bitstream-0.2.1.hex",
       "size": 5648983,
-      "date": "2026-07-19",
+      "date": "",
       "notes": "Bitstream Studio 0.2.1 handoff firmware"
     },
     {

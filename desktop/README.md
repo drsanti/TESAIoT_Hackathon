@@ -10,7 +10,7 @@ Pair with firmware from [`../hex/`](../hex/) (same **0.5.0** line when possible)
 |------|--------|
 | `Bitstream.Studio_0.5.0_x64-setup.exe` | **Windows** 10/11 (64-bit) — NSIS installer |
 | `Bitstream.Studio_0.5.0_aarch64.dmg` | **macOS** Apple Silicon (M1/M2/M3/…) |
-| *(Linux)* | **Not shipped yet** — Tauri desktop currently builds Windows + macOS only. Use the [VSIX](../vsix/) in VS Code / Bitstream IDE on Linux. |
+| *(Linux)* | **Not shipped** — current Tauri desktop pipeline builds Windows + macOS only. On Linux use the [VSIX](../vsix/) in VS Code / Bitstream IDE. |
 
 ## Install
 

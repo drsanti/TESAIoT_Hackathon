@@ -1,7 +1,44 @@
 {
   "channel": "stable",
-  "latest": "0.5.0",
+  "latest": "0.5.2",
   "firmware": [
+    {
+      "version": "0.5.1",
+      "file": "tesaiot-bitstream-0.5.1.hex",
+      "size": 5958323,
+      "date": "2026-10-08",
+      "notes": "Bitstream Studio 0.5.1 handoff firmware",
+      "memory": {
+        "cores": [
+          {
+            "id": "cm33_s",
+            "label": "CM33-S",
+            "flashUsed": 27908,
+            "flashTotal": 2097152,
+            "pct": 1
+          },
+          {
+            "id": "cm33_ns",
+            "label": "CM33-NS",
+            "flashUsed": 2492704,
+            "flashTotal": 2097152,
+            "pct": 119
+          },
+          {
+            "id": "cm55",
+            "label": "CM55",
+            "flashUsed": 1476624,
+            "flashTotal": 2883584,
+            "pct": 51
+          }
+        ],
+        "sram": {
+          "used": 690261,
+          "total": 1048576,
+          "pct": 66
+        }
+      }
+    },
     {
       "version": "0.5.0",
       "file": "tesaiot-bitstream-0.5.0.hex",

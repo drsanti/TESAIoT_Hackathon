@@ -46,6 +46,7 @@ Watch the YouTube playlists above before or alongside the steps below: [BitStrea
 | Folder                 | Purpose                                                      |
 | ---------------------- | ------------------------------------------------------------ |
 | [`vsix/`](vsix/)       | Bitstream Studio extension — install in VS Code or Cursor    |
+| [`backend/`](backend/) | **Bitstream Backend** standalone zip (headless; Start/Stop; no npm) — for thin Marketplace / IDE attach |
 | [`ide/`](ide/)         | BitStream IDE installers (all-in-one app; optional)          |
 | [`hex/`](hex/)         | DevKit firmware — flash before hardware labs                 |
 | [`flasher/`](flasher/) | TESAIoT Flasher desktop installers (Windows / macOS / Linux) |

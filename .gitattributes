@@ -14,3 +14,4 @@ desktop/*.dmg filter=lfs diff=lfs merge=lfs -text
 desktop/*.AppImage filter=lfs diff=lfs merge=lfs -text
 desktop/*.deb filter=lfs diff=lfs merge=lfs -text
 desktop/*.msi filter=lfs diff=lfs merge=lfs -text
+backend/*.zip filter=lfs diff=lfs merge=lfs -text

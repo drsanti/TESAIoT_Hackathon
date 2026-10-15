@@ -1,5 +1,5 @@
 /**
- * Shared helpers for Bitstream Studio TESAIoT_Hackathon examples (ex01–ex08, ex16–ex17).
+ * Shared helpers for Bitstream Studio workshop web-app examples (ex01–ex08, ex16–ex17).
  * Import this module from sibling HTML pages for SDK load + UI helpers.
  */
 

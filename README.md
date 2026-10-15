@@ -1,17 +1,19 @@
-# TESAIoT Hackathon
+# bitstream (workshop handoff)
+
+Formerly **TESAIoT_Hackathon** — same participant drops (VSIX, HEX, backend, flasher, web-app).
 
 [![Release](https://img.shields.io/badge/release-v0.2.1-0B6E99?style=flat-square)](hex/firmware-manifest.json)
 [![Updated](https://img.shields.io/badge/updated-2026--08--19-2E7D32?style=flat-square)](hex/firmware-manifest.json)
 [![VSIX](https://img.shields.io/badge/Bitstream%20Studio-0.2.1-5C6BC0?style=flat-square)](vsix/)
 [![Firmware](https://img.shields.io/badge/firmware%20HEX-0.2.1-F57C00?style=flat-square)](hex/)
-[![Repo](https://img.shields.io/badge/GitHub-TESAIoT__Hackathon-181717?style=flat-square&logo=github)](https://github.com/drsanti/TESAIoT_Hackathon)
+[![Repo](https://img.shields.io/badge/GitHub-drsanti%2Fbitstream-181717?style=flat-square&logo=github)](https://github.com/drsanti/bitstream)
 
 Install **Bitstream Studio**, flash the **TESAIoT PSoC Edge DevKit**, and run **live sensor demos** — no firmware or extension build required.
 
 - **Latest VSIX:** Bitstream Studio **0.2.1** (`vsix/bitstream-studio-0.2.1.vsix`)
 - **Paired firmware HEX:** **0.2.1** (`hex/tesaiot-bitstream-0.2.1.hex`)
 - **Updated:** 2026-08-19
-- **Repository:** [github.com/drsanti/TESAIoT_Hackathon](https://github.com/drsanti/TESAIoT_Hackathon)
+- **Repository:** [github.com/drsanti/bitstream](https://github.com/drsanti/bitstream)
 - **Video tutorials:**
   - [BitStream Studio](https://www.youtube.com/watch?v=YrEnnaBSxKM&list=PLAnm1xKpsLr4) — install, flash, connect, and demos
   - [AIoT Foundation](https://www.youtube.com/watch?v=Wc_nXiLS864&list=PLOuPSlsBpTYA) — full course playlist
@@ -75,8 +77,8 @@ Watch the YouTube playlists above before or alongside the steps below: [BitStrea
 **Option A — Git**
 
 ```bash
-git clone https://github.com/drsanti/TESAIoT_Hackathon.git
-cd TESAIoT_Hackathon
+git clone https://github.com/drsanti/bitstream.git
+cd bitstream
 ```
 
 **Option B — ZIP** — On GitHub, click **Code → Download ZIP**, then extract the folder.
@@ -133,8 +135,8 @@ Bitstream Studio starts its background services when the extension loads — not
 If you already have Bitstream Studio installed (or will get the VSIX another way) and only need the HTML telemetry examples, use a **sparse clone** so Git does not download `vsix/`, `hex/`, or other large handoff folders:
 
 ```bash
-git clone --filter=blob:none --sparse https://github.com/drsanti/TESAIoT_Hackathon.git
-cd TESAIoT_Hackathon
+git clone --filter=blob:none --sparse https://github.com/drsanti/bitstream.git
+cd bitstream
 git sparse-checkout set web-app
 ```
 
@@ -147,8 +149,8 @@ git sparse-checkout set web-app
 **Optional — shallower clone** (history tip only):
 
 ```bash
-git clone --depth 1 --filter=blob:none --sparse https://github.com/drsanti/TESAIoT_Hackathon.git
-cd TESAIoT_Hackathon
+git clone --depth 1 --filter=blob:none --sparse https://github.com/drsanti/bitstream.git
+cd bitstream
 git sparse-checkout set web-app
 ```
 

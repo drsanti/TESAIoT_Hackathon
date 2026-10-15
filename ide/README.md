@@ -40,6 +40,6 @@ From the BitStream IDE repo:
 node ternion/download-ide-release-to-hackathon.mjs --tag bitstream-ide-v0.3.0
 ```
 
-Then commit/push **TESAIoT_Hackathon** (use Git LFS for large `.exe` / `.dmg` if configured). The download script keeps slim installers only (drops any legacy `*Assets*` artifacts).
+Then commit/push **bitstream** (use Git LFS for large `.exe` / `.dmg` if configured). The download script keeps slim installers only (drops any legacy `*Assets*` artifacts).
 
 Related: Bitstream Studio VSIX-only path remains [`../vsix/`](../vsix/).
